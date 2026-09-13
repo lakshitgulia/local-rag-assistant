@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RAG Assistant Demo</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --border: #2a2e37;
+    --text: #e6e8eb;
+    --muted: #9aa1ac;
+    --accent: #5b8cff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 40px 16px;
+  }
+  .app { width: 100%; max-width: 760px; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  .row { display: flex; gap: 8px; margin-bottom: 8px; }
+  select, input[type=text] {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  input[type=text] { flex: 1; }
+  select { flex-shrink: 0; }
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .role-note { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    margin-top: 16px;
+  }
+  .answer { white-space: pre-wrap; line-height: 1.5; font-size: 15px; }
+  .timing { color: var(--muted); font-size: 12px; margin-top: 10px; }
+  .source {
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    margin-top: 10px;
+    font-size: 13px;
+  }
+  .source-head { color: var(--accent); font-weight: 600; margin-bottom: 4px; }
+  .source-snippet { color: var(--muted); }
+  .hidden { display: none; }
+  .loading { color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>RAG Assistant &mdash; Proof of Concept</h1>
+  <div class="subtitle">Answers are constrained to your indexed documents. 100% local inference via Ollama.</div>
+
+  <div class="row">
+    <input type="text" id="question" placeholder="Ask a question about your indexed documents..." />
+    <select id="role">
+      <option value="all">All Staff</option>
+      <option value="finance">Finance</option>
+    </select>
+    <button id="ask">Ask</button>
+  </div>
+  <div class="role-note">Role is a demo stand-in for access control, not real RBAC &mdash; it filters which documents' citations can be returned.</div>
+
+  <div id="loading" class="loading hidden">Thinking...</div>
+
+  <div id="result" class="panel hidden">
+    <div id="answer" class="answer"></div>
+    <div id="timing" class="timing"></div>
+    <div id="sources"></div>
+  </div>
+</div>
+
+<script>
+const questionInput = document.getElementById('question');
+const roleSelect = document.getElementById('role');
+const askButton = document.getElementById('ask');
+const loading = document.getElementById('loading');
+const result = document.getElementById('result');
+const answerEl = document.getElementById('answer');
+const timingEl = document.getElementById('timing');
+const sourcesEl = document.getElementById('sources');
+
+async function ask() {
+  const question = questionInput.value.trim();
+  if (!question) return;
+
+  askButton.disabled = true;
+  loading.classList.remove('hidden');
+  result.classList.add('hidden');
+  sourcesEl.innerHTML = '';
+
+  try {
+    const resp = await fetch('/api/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, role: roleSelect.value })
+    });
+    if (!resp.ok) {
+      const err = await resp.json();
+      answerEl.textContent = 'Error: ' + (err.detail || resp.statusText);
+      timingEl.textContent = '';
+    } else {
+      const data = await resp.json();
+      answerEl.textContent = data.answer;
+      timingEl.textContent = `Response time: ${data.response_time_seconds}s`;
+      data.sources.forEach(s => {
+        const div = document.createElement('div');
+        div.className = 'source';
+        div.innerHTML = `<div class="source-head">[${s.rank}] ${s.file} &mdash; ${s.location}</div><div class="source-snippet">${s.snippet}</div>`;
+        sourcesEl.appendChild(div);
+      });
+    }
+    result.classList.remove('hidden');
+  } catch (e) {
+    answerEl.textContent = 'Request failed: ' + e.message;
+    result.classList.remove('hidden');
+  } finally {
+    loading.classList.add('hidden');
+    askButton.disabled = false;
+  }
+}
+
+askButton.addEventListener('click', ask);
+questionInput.addEventListener('keydown', e => { if (e.key === 'Enter') ask(); });
+</script>
+</body>
+</html>

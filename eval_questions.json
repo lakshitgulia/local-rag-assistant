@@ -1,0 +1,92 @@
+[
+  {
+    "question": "According to the DPR document, why was hybrid retrieval chosen instead of vector-only search?",
+    "expected_source_file": "DPR_Internal_Knowledge_RAG_Assistant.docx",
+    "note": "Section 4.2 'Why hybrid retrieval, not vector-only' -- vector search misses exact identifiers like a policy number, employee name, or dollar figure because they don't embed distinctively.",
+    "adversarial": false
+  },
+  {
+    "question": "What are the three acceptance criteria targets defined in the DPR for the RAG assistant?",
+    "expected_source_file": "DPR_Internal_Knowledge_RAG_Assistant.docx",
+    "note": "Executive Summary -- '>=80% top-3 citation accuracy, <5 second response time at ~10k indexed documents, and zero uncontrolled data egress.'",
+    "adversarial": false
+  },
+  {
+    "question": "According to the DPR, what four things are explicitly excluded from the RAG assistant's scope?",
+    "expected_source_file": "DPR_Internal_Knowledge_RAG_Assistant.docx",
+    "note": "Scope-exclusions bullet list -- write-back actions into source systems, real-time collaborative editing, non-English language support, and native mobile apps.",
+    "adversarial": false
+  },
+  {
+    "question": "According to the DPR document, where does each document chunk's ACL (access control) group tag come from at ingestion time?",
+    "expected_source_file": "DPR_Internal_Knowledge_RAG_Assistant.docx",
+    "note": "Section 10.1 'access control model' -- sourced from the origin system's own permissions (e.g. SharePoint folder permissions, mailbox ownership), not guessed from folder names.",
+    "adversarial": false
+  },
+  {
+    "question": "What is the formula for calculating CAGR (Compound Annual Growth Rate)?",
+    "expected_source_file": "Unit 3 Finance and Marketing for early entrepreneurs.pdf",
+    "note": "Page 8 -- CAGR = (Ending Value / Beginning Value)^(1/n) - 1.",
+    "adversarial": false
+  },
+  {
+    "question": "What is the formula for the break-even point, and what do the variables FC, R, and VC stand for?",
+    "expected_source_file": "Unit 3 Finance and Marketing for early entrepreneurs.pdf",
+    "note": "Page 20 -- BEP = FC / (R - VC), where R = revenue per unit, FC = fixed cost, VC = variable cost per unit.",
+    "adversarial": false
+  },
+  {
+    "question": "What is the basic formula shown for a Profit & Loss (P&L) statement?",
+    "expected_source_file": "Unit 3 Finance and Marketing for early entrepreneurs.pdf",
+    "note": "Page 2 -- 'Revenue - Expenses = Net profit or net loss.'",
+    "adversarial": false
+  },
+  {
+    "question": "According to the Design and Analysis of Algorithms notes, what technique is used to efficiently solve problems that have overlapping subproblems and an optimal substructure property?",
+    "expected_source_file": "unit 3.pdf",
+    "note": "Page 2 -- Dynamic Programming. ADVERSARIAL: the corpus has THREE different files whose title/content literally contains 'Unit 3' -- this one (DAA), 'Unit 3 Finance and Marketing...pdf', and 'VIPS OS_UNIT 3_Memory organization Management .pdf'. Tests whether retrieval picks the right one by actual content, not just the 'unit 3' keyword.",
+    "adversarial": true
+  },
+  {
+    "question": "What graph traversal algorithm is covered in Unit 4 of the Design and Analysis of Algorithms notes?",
+    "expected_source_file": "Unit-4.pdf",
+    "note": "Pages 2-3 -- Breadth First Search.",
+    "adversarial": false
+  },
+  {
+    "question": "According to the operating systems course notes, what is the difference between internal and external fragmentation?",
+    "expected_source_file": "VIPS OS_UNIT 3_Memory organization Management .pdf",
+    "note": "Page 34. ADVERSARIAL (real one, not hypothetical): this is the EXACT chunk that caused the round-3 grounding bug, where llama3.2:3b previously blended this file's fragmentation content into an answer about the unrelated DPR document. Also collides on the 'Unit 3' keyword with two other files (see the DAA question above). This is a direct regression check on the fix already applied.",
+    "adversarial": true
+  },
+  {
+    "question": "What is OCR (Optical Character Recognition) and what does it do?",
+    "expected_source_file": "nlp mids 2(5).pdf",
+    "note": "Page 3 -- defines OCR as a computer vision technology that converts non-editable documents into machine-readable text. ADVERSARIAL: two near-identically-named files exist in the corpus, 'nlp mids 2.pdf' and 'nlp new(5).pdf', which do NOT contain this definition -- verified by direct text search, only 'nlp mids 2(5).pdf' has it. Also the DPR document discusses scanned-page ingestion generally, which could tempt a wrong DPR citation instead.",
+    "adversarial": true
+  },
+  {
+    "question": "According to the data mining course notes, what is the definition of data mining?",
+    "expected_source_file": "idm mids 1.pdf",
+    "note": "Page 1 -- 'the process of discovering interesting, hidden, and actionable patterns, correlations, and anomalies within large datasets to predict outcomes.'",
+    "adversarial": false
+  },
+  {
+    "question": "According to the computer network security notes, what are the two broad categories that security attacks are classified into?",
+    "expected_source_file": "cns nida 1-20260314084625.pdf",
+    "note": "Page 1 -- Passive Attacks and Active Attacks.",
+    "adversarial": false
+  },
+  {
+    "question": "According to the mobile app development notes, what replaced the Dalvik Virtual Machine (DVM) in Android, and what compilation approach does it use?",
+    "expected_source_file": "mad mid 1 new.pdf",
+    "note": "Page 1 -- Android Runtime (ART), using Ahead-Of-Time (AOT) compilation.",
+    "adversarial": false
+  },
+  {
+    "question": "According to the AI Guardian paper's abstract, what percentage reduction in false positives did the system achieve, and how long did the training process take?",
+    "expected_source_file": "AI Guardian paper.pdf",
+    "note": "Page 1 (abstract) -- a 37% reduction in false positives, with a training completion time of 56.8 seconds.",
+    "adversarial": false
+  }
+]

@@ -1,0 +1,781 @@
+<title>RAG Assistant Build Report</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#eef0ee;
+    --surface:#ffffff;
+    --surface-2:#f4f5f3;
+    --ink:#171a19;
+    --muted:#5b625e;
+    --faint:#8b918d;
+    --border:#d9dcd8;
+    --border-soft:#e6e8e4;
+    --vector:#3d6fa3;
+    --vector-soft:#e4ecf3;
+    --keyword:#bd6a2c;
+    --keyword-soft:#f5e8dc;
+    --good:#2f7a4f;
+    --good-soft:#e2f0e6;
+    --warn:#a9821f;
+    --warn-soft:#f2ecd9;
+    --bad:#a3402f;
+    --bad-soft:#f5e3df;
+    --shadow: 0 1px 2px rgba(23,26,25,0.04), 0 6px 16px -8px rgba(23,26,25,0.10);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14171a;
+      --surface:#1b1f22;
+      --surface-2:#202427;
+      --ink:#eceeec;
+      --muted:#a4aba7;
+      --faint:#767d7a;
+      --border:#2c3134;
+      --border-soft:#262a2d;
+      --vector:#7ba7d6;
+      --vector-soft:#22333f;
+      --keyword:#e0965a;
+      --keyword-soft:#3a2c1f;
+      --good:#6ec090;
+      --good-soft:#1e2f24;
+      --warn:#d8b862;
+      --warn-soft:#332c1a;
+      --bad:#e08a78;
+      --bad-soft:#3a221e;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 20px -8px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14171a;
+    --surface:#1b1f22;
+    --surface-2:#202427;
+    --ink:#eceeec;
+    --muted:#a4aba7;
+    --faint:#767d7a;
+    --border:#2c3134;
+    --border-soft:#262a2d;
+    --vector:#7ba7d6;
+    --vector-soft:#22333f;
+    --keyword:#e0965a;
+    --keyword-soft:#3a2c1f;
+    --good:#6ec090;
+    --good-soft:#1e2f24;
+    --warn:#d8b862;
+    --warn-soft:#332c1a;
+    --bad:#e08a78;
+    --bad-soft:#3a221e;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 20px -8px rgba(0,0,0,0.5);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', -apple-system, sans-serif;
+    line-height:1.6;
+  }
+  .page{max-width:920px; margin:0 auto; padding:56px 28px 100px;}
+
+  code, .mono{ font-family:'IBM Plex Mono', ui-monospace, monospace; }
+
+  /* ---------- Cover ---------- */
+  .cover{
+    display:flex; flex-direction:column; gap:20px;
+    padding-bottom:32px; margin-bottom:40px;
+    border-bottom:1px solid var(--border);
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px; letter-spacing:0.09em; text-transform:uppercase;
+    color:var(--muted);
+    display:flex; align-items:center; gap:10px;
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--good);}
+  h1{
+    font-family:'Fraunces', serif;
+    font-optical-sizing:auto;
+    font-weight:600;
+    font-size:clamp(32px,5vw,46px);
+    line-height:1.08;
+    margin:0;
+    text-wrap:balance;
+    letter-spacing:-0.01em;
+  }
+  .subtitle{
+    font-size:17px; color:var(--muted); max-width:60ch; margin:0;
+  }
+  .meta-row{
+    display:flex; flex-wrap:wrap; gap:10px; margin-top:4px;
+  }
+  .meta-chip{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px; color:var(--muted);
+    background:var(--surface-2);
+    border:1px solid var(--border-soft);
+    border-radius:6px;
+    padding:5px 10px;
+  }
+
+  .stat-strip{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:1px;
+    background:var(--border); border:1px solid var(--border);
+    border-radius:10px; overflow:hidden; margin-top:8px;
+  }
+  .stat{ background:var(--surface); padding:16px 18px; }
+  .stat .n{
+    font-family:'Fraunces', serif; font-weight:600; font-size:26px;
+    font-variant-numeric:tabular-nums;
+  }
+  .stat .l{ font-size:12px; color:var(--muted); margin-top:2px; }
+
+  /* ---------- Sections ---------- */
+  section{ margin-bottom:52px; }
+  .sec-head{
+    display:flex; align-items:baseline; gap:12px; margin-bottom:18px;
+  }
+  .sec-num{
+    font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--faint);
+  }
+  h2{
+    font-family:'Fraunces', serif; font-weight:600; font-size:24px;
+    margin:0; text-wrap:balance;
+  }
+  h3{
+    font-family:'IBM Plex Sans', sans-serif; font-weight:600; font-size:15px;
+    margin:0 0 10px;
+  }
+  p{ margin:0 0 14px; color:var(--ink); }
+  p.lede{ color:var(--muted); font-size:16px; max-width:68ch; }
+  .card{
+    background:var(--surface); border:1px solid var(--border-soft);
+    border-radius:12px; box-shadow:var(--shadow);
+  }
+
+  /* ---------- Tech stack ---------- */
+  .stack-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:640px){ .stack-grid{grid-template-columns:1fr;} }
+  .stack-group{ padding:18px 20px; }
+  .stack-group .tag{
+    display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:11px;
+    letter-spacing:0.06em; text-transform:uppercase; color:var(--muted);
+    margin-bottom:10px;
+  }
+  .stack-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+  .stack-list li{
+    display:flex; justify-content:space-between; gap:12px;
+    font-size:13.5px; padding-bottom:8px; border-bottom:1px solid var(--border-soft);
+  }
+  .stack-list li:last-child{ border-bottom:none; padding-bottom:0; }
+  .stack-list .nm{ color:var(--ink); }
+  .stack-list .vv{ font-family:'IBM Plex Mono',monospace; color:var(--muted); font-size:12.5px; white-space:nowrap; }
+
+  /* ---------- Architecture table ---------- */
+  .filetable{ width:100%; border-collapse:collapse; }
+  .filetable th{
+    text-align:left; font-size:11px; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--faint); font-weight:600; padding:0 16px 10px; border-bottom:1px solid var(--border);
+  }
+  .filetable td{
+    padding:12px 16px; border-bottom:1px solid var(--border-soft); font-size:13.5px; vertical-align:top;
+  }
+  .filetable tr:last-child td{ border-bottom:none; }
+  .filetable .fn{ font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink); white-space:nowrap; }
+  .filetable .desc{ color:var(--muted); }
+
+  /* ---------- Fusion diagram ---------- */
+  .fusion{
+    display:flex; align-items:center; gap:0; padding:26px 20px; flex-wrap:wrap;
+  }
+  .fusion-col{ flex:1; min-width:180px; display:flex; flex-direction:column; gap:8px; }
+  .fusion-title{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:0.05em; text-transform:uppercase; margin-bottom:2px;}
+  .fusion-title.v{ color:var(--vector); }
+  .fusion-title.k{ color:var(--keyword); }
+  .rank-pill{
+    font-family:'IBM Plex Mono',monospace; font-size:12px; padding:6px 10px; border-radius:6px;
+  }
+  .rank-pill.v{ background:var(--vector-soft); color:var(--vector); }
+  .rank-pill.k{ background:var(--keyword-soft); color:var(--keyword); }
+  .fusion-arrow{
+    flex:0 0 auto; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--faint);
+    padding:0 18px; text-align:center;
+  }
+  .fusion-result{ flex:1; min-width:180px; }
+  .rank-pill.merged{
+    background:linear-gradient(90deg, var(--vector-soft), var(--keyword-soft));
+    color:var(--ink); font-weight:500; border:1px solid var(--border-soft);
+  }
+
+  /* ---------- Bug cards ---------- */
+  .bug{ padding:22px 22px 20px; margin-bottom:16px; }
+  .bug-head{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .bug-badge{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.04em;
+    background:var(--bad-soft); color:var(--bad); padding:3px 9px; border-radius:5px;
+    text-transform:uppercase;
+  }
+  .bug-file{ font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--muted); }
+  .bug-grid{ display:grid; grid-template-columns:100px 1fr; gap:8px 16px; font-size:13.5px; }
+  .bug-grid dt{ color:var(--faint); font-size:11.5px; text-transform:uppercase; letter-spacing:0.04em; padding-top:2px; }
+  .bug-grid dd{ margin:0; color:var(--ink); }
+  .bug-grid .fixed-tag{ color:var(--good); font-weight:600; }
+
+  /* ---------- Test log table ---------- */
+  .testtable{ width:100%; border-collapse:collapse; font-size:13px; }
+  .testtable th{
+    text-align:left; font-size:11px; letter-spacing:0.05em; text-transform:uppercase;
+    color:var(--faint); font-weight:600; padding:0 12px 10px; border-bottom:1px solid var(--border);
+  }
+  .testtable td{ padding:11px 12px; border-bottom:1px solid var(--border-soft); vertical-align:top; }
+  .testtable tr:last-child td{ border-bottom:none; }
+  .testtable .idx{ font-family:'IBM Plex Mono',monospace; color:var(--faint); }
+  .testtable .q{ color:var(--ink); }
+  .testtable .t{ font-family:'IBM Plex Mono',monospace; color:var(--muted); white-space:nowrap; }
+  .verdict{
+    display:inline-flex; align-items:center; gap:5px;
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; padding:3px 8px; border-radius:5px;
+    white-space:nowrap;
+  }
+  .verdict.pass{ background:var(--good-soft); color:var(--good); }
+  .verdict.fail{ background:var(--bad-soft); color:var(--bad); }
+  .verdict.fixed{ background:var(--warn-soft); color:var(--warn); }
+
+  /* ---------- Data stats ---------- */
+  .dstat-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  @media (max-width:700px){ .dstat-grid{grid-template-columns:repeat(2,1fr);} }
+  .dstat{ padding:16px 18px; }
+  .dstat .n{ font-family:'Fraunces',serif; font-weight:600; font-size:24px; font-variant-numeric:tabular-nums; }
+  .dstat .l{ font-size:12px; color:var(--muted); margin-top:2px; }
+
+  /* ---------- Status table (what's left) ---------- */
+  .statustable{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  .statustable th{
+    text-align:left; font-size:11px; letter-spacing:0.05em; text-transform:uppercase;
+    color:var(--faint); font-weight:600; padding:0 14px 10px; border-bottom:1px solid var(--border);
+  }
+  .statustable td{ padding:13px 14px; border-bottom:1px solid var(--border-soft); }
+  .statustable tr:last-child td{ border-bottom:none; }
+  .statustable .item{ font-weight:500; }
+  .statustable .note{ color:var(--muted); font-size:13px; }
+  .status-badge{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; padding:3px 9px; border-radius:5px;
+    white-space:nowrap; display:inline-block;
+  }
+  .status-badge.open{ background:var(--warn-soft); color:var(--warn); }
+  .status-badge.built{ background:var(--vector-soft); color:var(--vector); }
+  .status-badge.missing{ background:var(--bad-soft); color:var(--bad); }
+
+  /* ---------- Run block ---------- */
+  .runblock{
+    background:var(--ink); color:var(--bg);
+    border-radius:12px; padding:22px 24px; font-family:'IBM Plex Mono',monospace;
+    font-size:13.5px; line-height:1.9; overflow-x:auto;
+  }
+  :root[data-theme="dark"] .runblock, @media (prefers-color-scheme:dark){ }
+  .runblock .c1{ color:#8fae9a; }
+  .runblock .c2{ color:#e0965a; }
+
+  footer{
+    margin-top:60px; padding-top:24px; border-top:1px solid var(--border);
+    font-size:12.5px; color:var(--faint); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;
+  }
+
+  ::selection{ background:var(--vector-soft); }
+
+  /* ---------- Follow-up addendum ---------- */
+  .addendum-banner{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    background:var(--vector-soft); border:1px solid var(--border-soft);
+    border-radius:10px; padding:12px 16px; margin-bottom:40px;
+    font-size:13px; color:var(--ink);
+  }
+  .addendum-banner .tag{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.05em; text-transform:uppercase;
+    background:var(--vector); color:var(--surface); padding:3px 9px; border-radius:5px;
+  }
+  .task-head{
+    display:flex; align-items:center; gap:10px; margin:0 0 12px;
+  }
+  .task-num{
+    font-family:'Fraunces',serif; font-weight:600; font-size:19px; color:var(--vector);
+    flex:0 0 auto;
+  }
+  .compare{ display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--border); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:var(--shadow); }
+  @media (max-width:680px){ .compare{ grid-template-columns:1fr; } }
+  .compare-col{ background:var(--surface); padding:18px 20px; display:flex; flex-direction:column; gap:10px; }
+  .compare-head{ display:flex; justify-content:space-between; align-items:baseline; }
+  .compare-label{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; }
+  .compare-label.before{ color:var(--bad); }
+  .compare-label.after{ color:var(--good); }
+  .compare-time{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--muted); }
+  .compare-text{ font-size:13.5px; line-height:1.65; color:var(--ink); white-space:pre-line; }
+  .compare-question{ font-size:12.5px; color:var(--muted); margin-bottom:2px; font-style:italic; }
+  .finding{
+    padding:16px 20px; margin-top:14px; border-left:3px solid var(--warn);
+    background:var(--warn-soft); border-radius:0 10px 10px 0; font-size:13.5px;
+  }
+  .finding .flabel{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--warn); margin-bottom:6px; display:block; }
+  .checklist{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+  .checklist li{ display:flex; gap:10px; font-size:13.5px; align-items:flex-start; }
+  .checklist .ck{ color:var(--good); font-family:'IBM Plex Mono',monospace; flex:0 0 auto; }
+  .pending-box{
+    padding:16px 20px; border:1px dashed var(--border); border-radius:10px; font-size:13.5px; color:var(--muted);
+  }
+</style>
+
+<div class="page">
+
+  <div class="cover">
+    <div class="eyebrow"><span class="dot"></span>BUILD REPORT &middot; PROOF OF CONCEPT</div>
+    <h1>RAG Assistant — what got built, what got broken, and what's still open</h1>
+    <p class="subtitle">A local, citation-first RAG pipeline built to win a client bid: ingestion → hybrid retrieval → grounded answers with sources, running entirely on Ollama with no external API calls.</p>
+    <div class="meta-row">
+      <span class="meta-chip">/Users/lakshitgulia/Desktop/DEMO AI File Searcher</span>
+      <span class="meta-chip">Sun 13 Sep 2026</span>
+      <span class="meta-chip">Python 3.13.12 · macOS (Apple Silicon)</span>
+    </div>
+    <div class="stat-strip">
+      <div class="stat"><div class="n">882</div><div class="l">chunks indexed</div></div>
+      <div class="stat"><div class="n">6</div><div class="l">real bugs found &amp; fixed</div></div>
+      <div class="stat"><div class="n">87%</div><div class="l">measured top-3 accuracy</div></div>
+      <div class="stat"><div class="n">0</div><div class="l">external API calls</div></div>
+    </div>
+  </div>
+
+  <div class="addendum-banner">
+    <span class="tag">Updated</span>
+    <span>Section 10: a follow-up fix pass. Section 11: rebuilt on LangChain. Section 12: the real accuracy number — 13/15 (87%), both failures root-caused.</span>
+  </div>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">01</span><h2>What this is</h2></div>
+    <p class="lede">The client wants scattered PDFs, policies, reports and emails turned into one assistant that answers instantly and shows the exact passage behind every answer. This POC proves the mechanism end-to-end on real files pulled from this machine — not synthetic sample data — using a fully local stack: LangChain's hybrid retrieval (FAISS + BM25, reciprocal rank fusion) and Ollama for both embeddings and generation. Six real bugs surfaced across the original build and two follow-up rounds (a model-speed switch and a LangChain migration) and were fixed in place; all are documented below with root cause, not just the patch — see Sections 5, 10, and 11. A real measured accuracy number — 13/15 (87%) — is in Section 12.</p>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">02</span><h2>Tech stack</h2></div>
+    <div class="stack-grid">
+      <div class="card stack-group">
+        <span class="tag">Runtime &amp; API</span>
+        <ul class="stack-list">
+          <li><span class="nm">Python</span><span class="vv">3.13.12</span></li>
+          <li><span class="nm">FastAPI</span><span class="vv">0.115.0</span></li>
+          <li><span class="nm">Uvicorn</span><span class="vv">0.30.6</span></li>
+          <li><span class="nm">python-dotenv</span><span class="vv">1.0.1</span></li>
+          <li><span class="nm">requests</span><span class="vv">2.32.3</span></li>
+        </ul>
+      </div>
+      <div class="card stack-group">
+        <span class="tag">Engine — LangChain</span>
+        <ul class="stack-list">
+          <li><span class="nm">langchain / langchain-core</span><span class="vv">1.4.0 / 1.6.3</span></li>
+          <li><span class="nm">langchain-community</span><span class="vv">0.4.2</span></li>
+          <li><span class="nm">langchain-ollama</span><span class="vv">1.1.0</span></li>
+          <li><span class="nm">langchain-classic</span><span class="vv">1.0.8 · EnsembleRetriever</span></li>
+          <li><span class="nm">langsmith</span><span class="vv">transitive, inert</span></li>
+        </ul>
+      </div>
+      <div class="card stack-group">
+        <span class="tag">Retrieval</span>
+        <ul class="stack-list">
+          <li><span class="nm">faiss-cpu</span><span class="vv">1.15.0 (via langchain-community)</span></li>
+          <li><span class="nm">rank_bm25</span><span class="vv">0.2.2 (via BM25Retriever)</span></li>
+          <li><span class="nm">Fusion method</span><span class="vv">weighted reciprocal rank, c=60</span></li>
+        </ul>
+      </div>
+      <div class="card stack-group">
+        <span class="tag">Document parsing &amp; OCR</span>
+        <ul class="stack-list">
+          <li><span class="nm">pypdf</span><span class="vv">4.3.1</span></li>
+          <li><span class="nm">python-pptx</span><span class="vv">1.0.2</span></li>
+          <li><span class="nm">python-docx</span><span class="vv">1.1.2</span></li>
+          <li><span class="nm">pytesseract + Tesseract</span><span class="vv">0.3.13 / 5.5.3</span></li>
+          <li><span class="nm">pdf2image + Poppler</span><span class="vv">1.17.0 / 26.09.0</span></li>
+        </ul>
+      </div>
+      <div class="card stack-group">
+        <span class="tag">LLM &amp; embeddings — 100% local</span>
+        <ul class="stack-list">
+          <li><span class="nm">Ollama generation (default)</span><span class="vv">llama3.2:3b · 2.0 GB</span></li>
+          <li><span class="nm">Ollama generation (alternative)</span><span class="vv">llama3.1:8b · 4.9 GB</span></li>
+          <li><span class="nm">Ollama embeddings</span><span class="vv">nomic-embed-text · 274 MB</span></li>
+          <li><span class="nm">Vector index format</span><span class="vv">FAISS IndexFlatIP</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">03</span><h2>Architecture — every file, one sentence each</h2></div>
+    <p class="lede">Kept deliberately small: LangChain's own <code>Embeddings</code>/<code>VectorStore</code>/<code>LLM</code> base classes are the swappable-provider interface, so a provider swap later touches <code>core.py</code>'s two getter functions, not the pipeline. The email connector from the original build was removed entirely in the LangChain migration (Section 11) — not listed here because it no longer exists in the project.</p>
+    <div class="card">
+      <table class="filetable">
+        <tr><th>File</th><th>What it does</th></tr>
+        <tr><td class="fn">core.py</td><td class="desc"><code>get_embeddings()</code> / <code>get_llm()</code> — LangChain's <code>OllamaEmbeddings</code>/<code>OllamaLLM</code> — plus <code>tokenize()</code>, the demo role-tagging rule, and chunk persistence.</td></tr>
+        <tr><td class="fn">ingest.py</td><td class="desc">One-time batch pipeline: scans a folder, parses each file type, OCRs scanned pages, chunks text, embeds it in batches of 64, and writes the FAISS index.</td></tr>
+        <tr><td class="fn">retrieval.py</td><td class="desc">Builds a LangChain <code>EnsembleRetriever</code> (BM25 + FAISS, reciprocal rank fusion), filters by role, and chains the prompt and LLM call with LCEL.</td></tr>
+        <tr><td class="fn">app.py</td><td class="desc">FastAPI app — loads the persisted FAISS index once at startup, rebuilds BM25 from chunk metadata, exposes <code>/api/query</code>, serves the chat UI.</td></tr>
+        <tr><td class="fn">eval.py</td><td class="desc">Top-3 citation-accuracy harness — runs a question set against the live API, reports per-question pass/fail and a final percentage.</td></tr>
+        <tr><td class="fn">notebooks/</td><td class="desc">5 numbered demo walkthroughs calling the real engine against the real corpus — a companion layer the live app never depends on.</td></tr>
+        <tr><td class="fn">static/index.html</td><td class="desc">The single-page chat UI: question box, role dropdown, answer, response time, citations.</td></tr>
+        <tr><td class="fn">run.sh</td><td class="desc">One command to pull missing Ollama models, install dependencies, ingest if needed, and start the server.</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">04</span><h2>How hybrid retrieval actually decides a citation</h2></div>
+    <p class="lede">Vector search catches meaning ("predictive maintenance" ≈ "fixing problems before they happen"); keyword search catches exact terms — names, IDs, numbers — that embeddings blur together. Reciprocal rank fusion merges the two ranked lists without needing to tune a weight between them.</p>
+    <div class="card fusion">
+      <div class="fusion-col">
+        <div class="fusion-title v">Vector search · top 20</div>
+        <div class="rank-pill v">1 · ey.pptx.pdf.pdf, p.3 — 0.777</div>
+        <div class="rank-pill v">2 · CosmoTech_Khushi…, p.2 — 0.772</div>
+        <div class="rank-pill v">3 · HackShastra.pdf, p.2 — 0.769</div>
+      </div>
+      <div class="fusion-arrow">reciprocal<br/>rank fusion<br/>(k = 60)&nbsp;→</div>
+      <div class="fusion-col">
+        <div class="fusion-title k">BM25 keyword · top 20</div>
+        <div class="rank-pill k">1 · ey.pptx.pdf.pdf, p.3 — 6.53</div>
+        <div class="rank-pill k">2 · CosmoTech_Lakshit…, p.2 — 6.49</div>
+        <div class="rank-pill k">3 · HackShastra.pdf, p.2 — 6.42</div>
+      </div>
+      <div class="fusion-arrow">merge&nbsp;→</div>
+      <div class="fusion-result">
+        <div class="fusion-title" style="color:var(--muted)">Cited to the user</div>
+        <div class="rank-pill merged">[1] ey.pptx.pdf.pdf — page 3</div>
+        <div class="rank-pill merged" style="margin-top:8px">[2] CosmoTech_Khushi… — page 2</div>
+        <div class="rank-pill merged" style="margin-top:8px">[3] HackShastra.pdf — page 2</div>
+      </div>
+    </div>
+    <p style="margin-top:14px; color:var(--muted); font-size:13.5px;">If fusion returns nothing above the role-visible cut, the LLM never sees a question it could hallucinate an answer to — the guardrail fires before generation, not after.</p>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">05</span><h2>Two real bugs, found by actually running it</h2></div>
+
+    <div class="card bug">
+      <div class="bug-head">
+        <span class="bug-badge">Bug 1 · ingestion crash</span>
+        <span class="bug-file">ingest.py</span>
+      </div>
+      <dl class="bug-grid">
+        <dt>Symptom</dt><dd>Ingestion died mid-run: <code>requests.exceptions.HTTPError: 500</code> from Ollama's <code>/api/embeddings</code>.</dd>
+        <dt>Root cause</dt><dd>Chunking split text by word count (600 words/chunk). One PDF's text extraction glued glyphs together with no spaces, so one "word" alone was long enough that its chunk tokenized to <strong>4,638 tokens</strong> — past Ollama's 2,048-token batch limit. Confirmed in <code>~/.ollama/logs/server.log</code>: <code>input (4638 tokens) is too large to process</code>.</dd>
+        <dt>Fix</dt><dd>Switched chunking to character-based slicing (2,000 chars, 13% overlap) — bounded regardless of whitespace, immune to run-on extraction artifacts. <span class="fixed-tag">Verified: full re-ingestion completed clean, 882 chunks.</span></dd>
+      </dl>
+    </div>
+
+    <div class="card bug">
+      <div class="bug-head">
+        <span class="bug-badge">Bug 2 · silent retrieval degradation</span>
+        <span class="bug-file">core.py</span>
+      </div>
+      <dl class="bug-grid">
+        <dt>Symptom</dt><dd>Short questions like <em>"What is AutoMind?"</em> returned the no-answer fallback even though a 0.777-similarity match existed — the LLM saw irrelevant noise and gave up.</dd>
+        <dt>Root cause</dt><dd>BM25 tokenized with plain <code>.split()</code> — no punctuation stripped. The query token <code>"automind?"</code> never matched the corpus token <code>"automind"</code>, so BM25 scored almost entirely on stopwords ("what", "is") and surfaced an unrelated ML paper's diagram text and OS lecture notes instead.</dd>
+        <dt>Fix</dt><dd>Added a regex tokenizer (<code>[a-z0-9]+</code>) used consistently at index-build and query time; rebuilt <code>bm25.pkl</code> from the existing chunks. <span class="fixed-tag">Verified: same question re-tested, now returns a correct grounded answer citing 3 genuinely relevant documents.</span></dd>
+      </dl>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">06</span><h2>Testing performed, in order</h2></div>
+    <div class="card">
+      <table class="testtable">
+        <tr><th style="width:24px"></th><th>Check</th><th>Model</th><th>Result</th><th>Verdict</th></tr>
+        <tr><td class="idx">1</td><td class="q">Ingestion over 74 PDF/DOCX files from ~/Downloads</td><td class="mono t">—</td><td>Crashed on chunk-size overflow</td><td><span class="verdict fail">fail</span></td></tr>
+        <tr><td class="idx">2</td><td class="q">Re-run after character-chunking fix</td><td class="mono t">nomic-embed-text</td><td>882 chunks, 73 files, clean</td><td><span class="verdict pass">pass</span></td></tr>
+        <tr><td class="idx">3</td><td class="q">"What is AutoMind and what problem does it solve?"</td><td class="mono t">gemma:2b</td><td>Grounded, correct top-1 citation · 7.26s</td><td><span class="verdict pass">pass</span></td></tr>
+        <tr><td class="idx">4</td><td class="q">"What is the capital of France?" (guardrail)</td><td class="mono t">gemma:2b</td><td>Model declined correctly, but app still attached 3 citations</td><td><span class="verdict fail">fail</span></td></tr>
+        <tr><td class="idx">5</td><td class="q">Re-test after loosening the grounded-phrase check</td><td class="mono t">gemma:2b</td><td>grounded:false, 0 sources · 2.9s</td><td><span class="verdict pass">pass</span></td></tr>
+        <tr><td class="idx">6</td><td class="q">Invalid role "ceo"</td><td class="mono t">—</td><td>HTTP 400, rejected as designed</td><td><span class="verdict pass">pass</span></td></tr>
+        <tr><td class="idx">7</td><td class="q">"What is the DPR RAG Assistant document about?"</td><td class="mono t">gemma:2b</td><td>Correct top-1 citation · 10.67s</td><td><span class="verdict pass">pass</span></td></tr>
+        <tr><td class="idx">8</td><td class="q">"What is venture capital?"</td><td class="mono t">gemma:2b</td><td>Correct top-1 citation · 4.23s</td><td><span class="verdict pass">pass</span></td></tr>
+        <tr><td class="idx">9</td><td class="q">Full re-run of tests 3, 5, role=finance with the real target model</td><td class="mono t">llama3.1:8b</td><td>All correct · 10.87s / 2.57s / 1.11s</td><td><span class="verdict pass">pass</span></td></tr>
+        <tr><td class="idx">10</td><td class="q">Live browser click-through of the actual chat UI</td><td class="mono t">llama3.1:8b</td><td>Short question hit the BM25 bug live</td><td><span class="verdict fail">fail</span></td></tr>
+        <tr><td class="idx">11</td><td class="q">Same question, after BM25 tokenizer fix + index rebuild</td><td class="mono t">llama3.1:8b</td><td>Correct, 3 relevant citations · 34.3s</td><td><span class="verdict fixed">fixed</span></td></tr>
+        <tr><td class="idx">12</td><td class="q">Guardrail regression check post-fix</td><td class="mono t">llama3.1:8b</td><td>Still grounded:false, 0 sources</td><td><span class="verdict pass">pass</span></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">07</span><h2>What's actually in the index</h2></div>
+    <div class="dstat-grid">
+      <div class="card dstat"><div class="n">74</div><div class="l">files scanned (pdf + docx only, per scope decision)</div></div>
+      <div class="card dstat"><div class="n">73</div><div class="l">unique filenames — two files share the name "attention.pdf"</div></div>
+      <div class="card dstat"><div class="n">882</div><div class="l">chunks · 2,000 chars each, 13% overlap</div></div>
+      <div class="card dstat"><div class="n">5.3&nbsp;MB</div><div class="l">on-disk index (LangChain FAISS store 3.8 MB + chunk metadata 1.3 MB; BM25 is rebuilt fresh from metadata at startup, no separate file)</div></div>
+    </div>
+    <p style="margin-top:14px; color:var(--muted); font-size:13.5px;">All 882 chunks are currently tagged role <code>all</code> — none of the scanned files sit under a folder literally named <code>finance</code>, so the role dropdown is wired and tested but has nothing to actually filter yet. Citations show filename only, not full path — the two same-named <code>attention.pdf</code> files are indistinguishable in a citation, a known limitation worth a path-aware fix later if duplicate filenames turn out to matter for the real client corpus.</p>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">08</span><h2>What's left before the pitch call</h2></div>
+    <div class="card">
+      <table class="statustable">
+        <tr><th>Item</th><th>Status</th><th>Note</th></tr>
+        <tr>
+          <td class="item">Email / IMAP connector</td>
+          <td><span class="status-badge missing">removed entirely</span></td>
+          <td class="note">Was built and safety-gated, but removed from the project in the LangChain migration (Section 11) — deleted, not deferred. This demo is Downloads-only, permanently.</td>
+        </tr>
+        <tr>
+          <td class="item">ngrok</td>
+          <td><span class="status-badge missing">not installed</span></td>
+          <td class="note">Needed to hand the client a live link during the call. Install it and log into your own account before demo day.</td>
+        </tr>
+        <tr>
+          <td class="item">Demo question set / accuracy</td>
+          <td><span class="status-badge built">resolved</span></td>
+          <td class="note">13/15 (87%) measured, see Section 12. The corpus itself is still organic Downloads content — pick your live pitch questions from the genuinely policy/report-shaped files, same ones the eval used.</td>
+        </tr>
+        <tr>
+          <td class="item">Production roadmap items</td>
+          <td><span class="status-badge open">deferred by design</span></td>
+          <td class="note">Live connectors, real SSO/RBAC, reranker, Slack/Teams, chat history, cloud deployment, formal load benchmark — all intentionally out of scope for this POC, documented in the README.</td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">09</span><h2>Run it</h2></div>
+    <div class="runblock">
+      <span class="c1"># one command — pulls missing models, installs deps, ingests if needed, starts the server</span><br/>
+      ./run.sh<br/><br/>
+      <span class="c1"># then, for the live demo link</span><br/>
+      ngrok http 8000
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">10</span><h2>Follow-up fix pass</h2></div>
+    <p class="lede">Three targeted fixes on top of the working build above — no scope beyond what was asked. Each is reported the same way as the original bugs: root cause, fix, verified before/after.</p>
+
+    <div class="card" style="padding:24px 24px 22px; margin-bottom:20px;">
+      <div class="task-head"><span class="task-num">1</span><h3 style="font-size:17px; margin:0;">Answers were too short</h3></div>
+      <dl class="bug-grid" style="margin-bottom:16px;">
+        <dt>Root cause</dt><dd>Confirmed by checking in the order requested: the prompt never asked for elaboration (it only said "answer using the excerpts," nothing about depth). <code>num_predict</code> was unset (Ollama's implicit default, not an explicit cap). Context width was already <code>CONTEXT_K = 5</code> — already in the suggested 3–5 range, not the cause.</dd>
+        <dt>Fix</dt><dd>Added an explicit elaboration instruction to <code>PROMPT_TEMPLATE</code> in <code>retrieval.py</code>, and set <code>num_predict: 700</code> in the Ollama call in <code>core.py</code>.</dd>
+      </dl>
+
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; margin-bottom:16px;">
+        <div style="color:var(--bad); margin-bottom:4px;">− (before) no elaboration instruction</div>
+        <div style="color:var(--good);">+ (after) "Answer thoroughly using the specific details, numbers, and facts present in the sources below. Do not give a one-line summary — explain the relevant details and reasoning a staff member would actually need, drawing on every excerpt that's relevant, not just the first one."</div>
+      </div>
+
+      <h3 style="margin-bottom:10px;">Verified: same 3 questions, real before/after text</h3>
+
+      <div class="compare-question">Q3 · "What is AutoMind and what problem does it solve?"</div>
+      <div class="compare">
+        <div class="compare-col">
+          <div class="compare-head"><span class="compare-label before">Before · 35 words</span><span class="compare-time">103.30s</span></div>
+          <div class="compare-text">AutoMind is an advanced AI platform that helps vehicle companies, vehicle owners, and service centers take care of vehicles before problems happen [1], [3], [5]. It solves the problem of predictive vehicle maintenance [3], [5].</div>
+        </div>
+        <div class="compare-col">
+          <div class="compare-head"><span class="compare-label after">After · 134 words</span><span class="compare-time">318.95s</span></div>
+          <div class="compare-text">Based on the provided excerpts, AutoMind is an advanced AI platform that helps vehicle companies, vehicle owners, and service centers take care of vehicles before problems happen [3], [5]. Specifically, it is described as a solution for predictive vehicle maintenance [3], [5].
+
+This suggests that AutoMind solves the problem of vehicle maintenance by predicting and preventing potential issues, such as a brake pad being gone [3]. This is in line with the description of a "smart AI solution for Predictive Vehicle Maintenance" [3], [5].
+
+In terms of the underlying technology, AutoMind is not explicitly described as a specific AI technique or algorithm, but it is mentioned as an advanced AI platform, which implies that it likely utilizes some form of machine learning or NLP to analyze and predict vehicle maintenance needs.</div>
+        </div>
+      </div>
+
+      <div class="compare-question" style="margin-top:18px;">Q7 · "What is the DPR Internal Knowledge RAG Assistant document about?"</div>
+      <div class="compare">
+        <div class="compare-col">
+          <div class="compare-head"><span class="compare-label before">Before · 40 words</span><span class="compare-time">270.79s</span></div>
+          <div class="compare-text">The DPR Internal Knowledge RAG Assistant document [1] is about a Retrieval-Augmented Generation (RAG) assistant designed to convert scattered organizational knowledge into a single conversational assistant that answers staff questions instantly and returns the exact source passage behind every answer.</div>
+        </div>
+        <div class="compare-col">
+          <div class="compare-head"><span class="compare-label after">After · 283 words</span><span class="compare-time">181.61s</span></div>
+          <div class="compare-text">The DPR Internal Knowledge RAG Assistant document is about a project to develop a Retrieval-Augmented Generation (RAG) assistant that will convert scattered organizational knowledge into a single conversational assistant. The system aims to provide answers to staff questions instantly and return the exact source passage behind every answer. The report defines the complete design, technology stack, data workflows, agent scope, infrastructure, and delivery plan for the RAG assistant.
+
+According to [1], the project goals are to eliminate the time staff spend manually searching for answers, provide answers with verifiable source citations, and keep all sensitive organizational data inside the client's private network. The system is designed to support continuous daily ingestion of new and updated documents without manual re-indexing.
+
+[…] the document mentions that the system will use Optical Character Recognition (OCR) technology to convert non-editable documents into editable, searchable text, as explained in [2]. […] The system will use a role-based access control (RBAC) model to ensure that only authorized users can access certain documents and conversations.</div>
+        </div>
+      </div>
+
+      <div class="compare-question" style="margin-top:18px;">Q8 · "What is venture capital?"</div>
+      <div class="compare">
+        <div class="compare-col">
+          <div class="compare-head"><span class="compare-label before">Before · 38 words</span><span class="compare-time">239.55s</span></div>
+          <div class="compare-text">Venture capital is a form of private equity financing that investors provide to startups and small businesses that are believed to have long-term growth potential. In exchange for their investment, venture capitalists receive equity in the company. [1]</div>
+        </div>
+        <div class="compare-col">
+          <div class="compare-head"><span class="compare-label after">After · 173 words</span><span class="compare-time">302.97s</span></div>
+          <div class="compare-text">Venture capital is a form of private equity financing that investors provide to startups and small businesses that are believed to have long-term growth potential. In exchange for their investment, venture capitalists (VCs) receive equity in the company [1]. Venture capital is a crucial source of funding for high-potential, high-risk ventures that may not have access to traditional sources of financing [1].
+
+Venture capital is typically provided at various stages of a company's development, including the seed stage, the growth stage, and sometimes later stages [1]. Venture capitalists often take an active role in the companies they invest in, providing strategic guidance and leveraging their industry connections [4].
+
+Venture capitalists also conduct thorough due diligence before making an investment [4]. They invest with the expectation of achieving a profitable exit, such as an IPO or an M&amp;A [4].</div>
+        </div>
+      </div>
+
+      <div class="finding">
+        <span class="flabel">Side-effect found while verifying</span>
+        The longer answers now sometimes cite <code>[4]</code> or <code>[5]</code> inline (visible in the Q8 "after" text above) — chunks that were in the model's context but fall outside <code>CITATION_K = 3</code>, so the UI has no source card for them. Not fixed here (out of scope for this pass) — flagging it because it's a direct, real consequence of asking for more thorough answers.
+      </div>
+      <div class="finding" style="border-left-color:var(--vector); background:var(--vector-soft);">
+        <span class="flabel" style="color:var(--vector);">Necessary follow-on fix</span>
+        A 700-token answer occasionally exceeded the existing 300s request timeout on this machine, hitting an unhandled <code>ReadTimeout</code> that surfaced as a raw 500 error. Bumped <code>core.py</code>'s <code>OllamaLLM</code> timeout from 300s → 600s — a direct, minimal consequence of raising <code>num_predict</code>, not scope creep.
+      </div>
+      <div class="finding" style="border-left-color:var(--faint); background:var(--surface-2);">
+        <span class="flabel" style="color:var(--muted);">Honest hardware note</span>
+        Response times above (103s–319s) are inflated by this specific test session: <code>vm_stat</code> showed the machine down to ~58MB free RAM with multiple Ollama models loaded, causing swap-thrashing and generation speeds as low as 0.5 tokens/sec (vs. 2.7 tok/s once memory pressure eased). This is a session-specific resource constraint, not a property of the fix — but it's real evidence that this hardware needs headroom before the pitch call, worth planning around.
+      </div>
+    </div>
+
+    <div class="card" style="padding:24px 24px 22px; margin-bottom:20px;">
+      <div class="task-head"><span class="task-num">2</span><h3 style="font-size:17px; margin:0;">Code cleanliness re-audit</h3></div>
+      <p style="margin-bottom:14px; color:var(--muted); font-size:13.5px;">Checked every file for unused imports/functions/variables, commented-out old implementations, and indirection that only routes through to one other thing.</p>
+      <ul class="checklist" style="margin-bottom:16px;">
+        <li><span class="ck">✓</span><span>Ran an AST-based unused-import scan plus a grep for commented-out code (<code>^\s*#\s*(def|class|import|return|print)</code>) across every <code>.py</code> file — found and removed exactly one: an unused <code>message_from_file</code> import in <code>ingest.py</code> left over from an earlier draft of the email parser (only <code>message_from_bytes</code> is actually used).</span></li>
+        <li><span class="ck">✓</span><span>No leftovers from either of the two original bugs — the old word-count <code>chunk_text()</code> and the old <code>.lower().split()</code> BM25 tokenizer were fully replaced, not left dead alongside the fix.</span></li>
+        <li><span class="ck">✓</span><span>No commented-out code blocks found anywhere in the project.</span></li>
+        <li><span class="ck">✓</span><span>Checked every helper for pure pass-through indirection: <code>hybrid_search()</code>, <code>_rrf_fuse()</code>, and <code>_visible()</code> in <code>retrieval.py</code> each do real, distinct work (embedding + search, rank fusion, role filtering) — none of them just forward a call to one other function. The <code>EmbeddingModel</code> / <code>VectorStore</code> / <code>LLM</code> interfaces in <code>core.py</code> are the one deliberate abstraction the brief asked for, not incidental indirection.</span></li>
+        <li><span class="ck">✓</span><span>Verified every package in <code>requirements.txt</code> is actually imported somewhere (uvicorn is invoked as a CLI, not imported — expected).</span></li>
+      </ul>
+      <p style="margin:0; font-size:13.5px;"><strong>Call path confirmed unchanged:</strong> <code class="mono">question → embed (Ollama) + BM25 → fuse (RRF) → prompt → generate (Ollama) → citations</code>. Nothing new sits between any of those steps.</p>
+    </div>
+
+    <div class="card" style="padding:24px 24px 22px;">
+      <div class="task-head"><span class="task-num">3</span><h3 style="font-size:17px; margin:0;">Top-3 accuracy — real measured number</h3></div>
+      <p style="margin-bottom:14px; font-size:13.5px;"><code>eval.py</code> is built and ready: takes a JSON file of <code>{question, expected_source_file}</code> pairs, runs each through the live <code>/api/query</code> endpoint, checks whether <code>expected_source_file</code> appears anywhere in the top-3 citations, and prints a per-question pass/fail plus a final <code>X/Y correct (Z%)</code> summary.</p>
+      <div class="runblock" style="font-size:13px; padding:16px 20px;">python eval.py questions.json</div>
+      <div class="finding" style="border-left-color:var(--good); background:var(--good-soft);">
+        <span class="flabel" style="color:var(--good);">Update — run, real number in hand</span>
+        <strong>13/15 correct (87%)</strong> — above the 80% target. Full per-question results and root-cause analysis of both failures are in Section 12 below.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">11</span><h2>LangChain migration</h2></div>
+    <p class="lede">The hand-written pipeline in <code>core.py</code>/<code>retrieval.py</code> was rebuilt on LangChain, keeping identical external behavior (same API, same UI, same citations format). This section covers the new stack, what changed, and every bug this specific migration introduced and fixed — same rigor as every other section on this page.</p>
+
+    <div class="dstat-grid" style="margin-bottom:20px;">
+      <div class="card dstat"><div class="n">5/5</div><div class="l">prior bug fixes re-verified intact</div></div>
+      <div class="card dstat"><div class="n">1</div><div class="l">new bug introduced by the migration, found &amp; fixed</div></div>
+      <div class="card dstat"><div class="n">882</div><div class="l">chunks re-indexed — identical count to pre-migration</div></div>
+      <div class="card dstat"><div class="n">2</div><div class="l">TCP connections during a live query — both localhost:11434</div></div>
+    </div>
+
+    <h3 style="margin:0 0 10px;">New libraries added</h3>
+    <div class="card" style="margin-bottom:20px;">
+      <table class="filetable">
+        <tr><th>Package</th><th>Version</th><th>Role</th></tr>
+        <tr><td class="fn">langchain</td><td class="fn">1.4.0</td><td class="desc">Top-level package. In this major version it's reoriented around LangGraph-based agents — pulls in <code>langgraph</code> transitively even though nothing here builds an agent.</td></tr>
+        <tr><td class="fn">langchain-core</td><td class="fn">1.6.3</td><td class="desc"><code>Document</code>, <code>PromptTemplate</code>, LCEL runnables (<code>|</code> chaining), <code>StrOutputParser</code>.</td></tr>
+        <tr><td class="fn">langchain-community</td><td class="fn">0.4.2</td><td class="desc">The <code>FAISS</code> vectorstore wrapper and <code>BM25Retriever</code>. Officially in sunset/maintenance mode upstream (deprecation warning on import) but still the current home for these two integrations.</td></tr>
+        <tr><td class="fn">langchain-ollama</td><td class="fn">1.1.0</td><td class="desc"><code>OllamaEmbeddings</code> and <code>OllamaLLM</code> — direct replacements for the hand-written Ollama HTTP wrapper classes.</td></tr>
+        <tr><td class="fn">langchain-classic</td><td class="fn">1.0.8</td><td class="desc"><code>EnsembleRetriever</code> lives here now — LangChain 1.x moved legacy composability retrievers out of the main package into this one.</td></tr>
+      </table>
+    </div>
+
+    <div class="finding" style="border-left-color:var(--warn);">
+      <span class="flabel">Disclosed before building, not after</span>
+      Your instructions said "no LangSmith, do not install langsmith." That's not achievable while using LangChain: <code>langsmith</code> is a required, non-optional dependency of <code>langchain-core</code> itself — verified this holds all the way back to <code>langchain-core==0.3.0</code>. I stopped and asked before proceeding rather than silently installing it. You approved continuing with it present-but-inert. <strong>Verified, not just claimed:</strong> <code>lsof -p &lt;app_pid&gt; -i</code> during a live query shows exactly two established connections, both <code>127.0.0.1:11434</code> — nothing else, anywhere. No API key or tracing flag is set anywhere in the code. <code>langgraph</code> (pulled in by <code>langchain</code> itself) is the same story: installed, unused, inert.
+    </div>
+
+    <h3 style="margin:20px 0 10px;">Architecture change</h3>
+    <p style="font-size:13.5px; margin-bottom:14px;">The hand-rolled <code>EmbeddingModel</code>/<code>VectorStore</code>/<code>LLM</code> ABC classes are gone. LangChain's own <code>Embeddings</code>/<code>VectorStore</code>/<code>LLM</code> base classes already <em>are</em> the swappable-provider interface this project needed — wrapping them in a second custom abstraction layer would have been indirection on top of indirection, which every cleanliness audit on this page has been checking against. <code>core.py</code> now just exposes <code>get_embeddings()</code> and <code>get_llm()</code>.</p>
+    <p style="font-size:13.5px; margin-bottom:14px;"><strong>EnsembleRetriever vs. hand-written RRF:</strong> your instructions said use it only if its fusion algorithm is equivalent to reciprocal rank fusion. Read the actual source (<code>langchain_classic/retrievers/ensemble.py</code>) instead of assuming — it implements weighted RRF with the identical default constant (<code>c=60</code>) the hand-written version used. Verdict: equivalent, so it replaced the hand-written fusion outright.</p>
+    <p style="font-size:13.5px;"><strong>Why it isn't one unbroken <code>retriever | prompt | llm</code> pipe:</strong> the guardrail has to inspect retrieved documents <em>before</em> deciding whether to call the LLM at all, and citation-building needs those same documents <em>after</em> generation. Both are project-specific with no LangChain built-in, per the brief. So retrieval+role-filtering runs as a plain function call, and only the generation half — <code>PROMPT | llm | StrOutputParser()</code> — is an LCEL chain.</p>
+
+    <h3 style="margin:20px 0 10px;">The one new bug this migration introduced</h3>
+    <div class="card bug">
+      <div class="bug-head">
+        <span class="bug-badge">Migration bug · ingestion crash</span>
+        <span class="bug-file">ingest.py</span>
+      </div>
+      <dl class="bug-grid">
+        <dt>Symptom</dt><dd><code>ollama._types.ResponseError: ... connection reset by peer (status code: 400)</code> after 30.6s, mid-ingestion.</dd>
+        <dt>Root cause</dt><dd><code>OllamaEmbeddings.embed_documents()</code> sends the <em>entire</em> text list in one HTTP request — unlike the old hand-written loop, which embedded one chunk per call. Handing it all 882 chunks at once overwhelmed Ollama's <code>/api/embed</code> endpoint.</dd>
+        <dt>Fix</dt><dd>Batch client-side at 64 chunks/call in <code>ingest.py</code>. Not an arbitrary number — it's the exact batch size the DPR document itself specifies as the intended production design ("Embed chunks in batches (64–128 per call)"). <span class="fixed-tag">Verified: tested on a 3-file/143-chunk subset first, then the full 74-file corpus completed clean — 882 chunks, identical count to pre-migration, zero errors.</span></dd>
+      </dl>
+    </div>
+
+    <h3 style="margin:20px 0 10px;">All 5 prior bug fixes re-verified against the new engine</h3>
+    <div class="card">
+      <table class="testtable">
+        <tr><th style="width:24px">#</th><th>Fix</th><th>Verification</th><th>Result</th></tr>
+        <tr><td class="idx">1</td><td class="q">Character-based chunking</td><td class="q">Full re-ingestion chunk count</td><td><span class="verdict pass">882 = 882</span></td></tr>
+        <tr><td class="idx">2</td><td class="q">Punctuation-stripped BM25 tokenization</td><td class="q">"What is AutoMind?" retrieval</td><td><span class="verdict pass">correctly matched</span></td></tr>
+        <tr><td class="idx">3</td><td class="q">Substring guardrail</td><td class="q">"What is the capital of France?"</td><td><span class="verdict pass">grounded:false, 0 sources</span></td></tr>
+        <tr><td class="idx">4</td><td class="q">Thorough answers + generation cap</td><td class="q">DPR document question</td><td><span class="verdict pass">3 full paragraphs</span></td></tr>
+        <tr><td class="idx">5</td><td class="q">No cross-document blending</td><td class="q">Re-ran the exact question that broke this in round 3</td><td><span class="verdict pass">stayed correctly attributed</span></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">12</span><h2>Real measured accuracy — 13/15 (87%)</h2></div>
+    <p class="lede">The number the entire project has been building toward. Run against the live app with <code>llama3.2:3b</code>, the current default, over all 15 drafted questions from Section 10 — 9 distinct real files, 3 deliberately adversarial. No tuning of chunking, retrieval, or prompts after seeing results.</p>
+
+    <div class="stat-strip" style="margin-bottom:20px;">
+      <div class="stat"><div class="n">13/15</div><div class="l">correct in top-3</div></div>
+      <div class="stat"><div class="n">87%</div><div class="l">vs. 80% target</div></div>
+      <div class="stat"><div class="n">3/3</div><div class="l">adversarial questions passed</div></div>
+      <div class="stat"><div class="n">2</div><div class="l">failures, both root-caused</div></div>
+    </div>
+
+    <div class="card">
+      <table class="testtable">
+        <tr><th style="width:24px">#</th><th>Question</th><th>Expected file</th><th>Result</th></tr>
+        <tr><td class="idx">1</td><td class="q">Why hybrid retrieval over vector-only?</td><td class="q mono">DPR_...docx</td><td><span class="verdict pass">PASS</span></td></tr>
+        <tr><td class="idx">2</td><td class="q">Three acceptance criteria targets?</td><td class="q mono">DPR_...docx</td><td><span class="verdict pass">PASS</span></td></tr>
+        <tr><td class="idx">3</td><td class="q">Four things excluded from scope?</td><td class="q mono">DPR_...docx</td><td><span class="verdict fail">FAIL — no citation</span></td></tr>
+        <tr><td class="idx">4</td><td class="q">Where does ACL group tagging come from?</td><td class="q mono">DPR_...docx</td><td><span class="verdict pass">PASS</span></td></tr>
+        <tr><td class="idx">5</td><td class="q">CAGR formula?</td><td class="q mono">Unit 3 Finance...pdf</td><td><span class="verdict pass">PASS · 3/3</span></td></tr>
+        <tr><td class="idx">6</td><td class="q">Break-even point formula + variables?</td><td class="q mono">Unit 3 Finance...pdf</td><td><span class="verdict pass">PASS · 3/3</span></td></tr>
+        <tr><td class="idx">7</td><td class="q">P&amp;L statement basic formula?</td><td class="q mono">Unit 3 Finance...pdf</td><td><span class="verdict pass">PASS · 3/3</span></td></tr>
+        <tr><td class="idx">8</td><td class="q">Overlapping-subproblems technique? <em>(adversarial — 3-way "Unit 3" filename collision)</em></td><td class="q mono">unit 3.pdf</td><td><span class="verdict pass">PASS · 3/3</span></td></tr>
+        <tr><td class="idx">9</td><td class="q">Graph traversal algorithm in Unit 4?</td><td class="q mono">Unit-4.pdf</td><td><span class="verdict pass">PASS · 3/3</span></td></tr>
+        <tr><td class="idx">10</td><td class="q">Internal vs. external fragmentation? <em>(adversarial — the exact round-3 blending-bug chunk)</em></td><td class="q mono">VIPS OS_UNIT 3...pdf</td><td><span class="verdict pass">PASS · 3/3</span></td></tr>
+        <tr><td class="idx">11</td><td class="q">What is OCR? <em>(adversarial — near-duplicate filenames in corpus)</em></td><td class="q mono">nlp mids 2(5).pdf</td><td><span class="verdict pass">PASS</span></td></tr>
+        <tr><td class="idx">12</td><td class="q">Definition of data mining?</td><td class="q mono">idm mids 1.pdf</td><td><span class="verdict pass">PASS</span></td></tr>
+        <tr><td class="idx">13</td><td class="q">Two categories of security attacks?</td><td class="q mono">cns nida...pdf</td><td><span class="verdict fail">FAIL — wrong file</span></td></tr>
+        <tr><td class="idx">14</td><td class="q">What replaced Dalvik VM in Android?</td><td class="q mono">mad mid 1 new.pdf</td><td><span class="verdict pass">PASS · 3/3</span></td></tr>
+        <tr><td class="idx">15</td><td class="q">AI Guardian: false-positive % and training time?</td><td class="q mono">AI Guardian paper.pdf</td><td><span class="verdict pass">PASS · 3/3</span></td></tr>
+      </table>
+    </div>
+
+    <h3 style="margin:20px 0 10px;">Both failures investigated, not just logged</h3>
+
+    <div class="card bug">
+      <div class="bug-head">
+        <span class="bug-badge">Failure · wrong document entirely</span>
+        <span class="bug-file">cns nida 1-20260314084625.pdf</span>
+      </div>
+      <dl class="bug-grid">
+        <dt>What happened</dt><dd>Question about security-attack categories retrieved 3 completely unrelated files instead.</dd>
+        <dt>Root cause</dt><dd>Checked the actual indexed text for this file: it extracted with <strong>zero spaces between words</strong> — <code>"UNITI:SecurityConcepts(Part1)...Informationsecurityistheprocessofprotecting..."</code>. This breaks BM25 outright (the whole run becomes one unmatched token) and likely degrades the embedding too. A source-file extraction-quality problem — the same category as the very first bug in this project, just silently degrading one file's retrievability instead of crashing ingestion.</dd>
+        <dt>Not fixed</dt><dd>Out of scope for this pass per your instruction not to tune after seeing results. Flagging it as a real, named limitation of the current corpus rather than hiding it.</dd>
+      </dl>
+    </div>
+
+    <div class="card bug">
+      <div class="bug-head">
+        <span class="bug-badge">Failure · right document, wrong section</span>
+        <span class="bug-file">DPR_Internal_Knowledge_RAG_Assistant.docx</span>
+      </div>
+      <dl class="bug-grid">
+        <dt>What happened</dt><dd>Question about the four scope exclusions returned no citation at all.</dd>
+        <dt>Root cause</dt><dd>Queried retrieval directly to check: the DPR's opening/title chunk got retrieved, not the chunk further into the document that actually lists the exclusions. Confirmed by string-checking the retrieved chunk's content — it does not contain the exclusion list. The model correctly declined rather than guess; it simply didn't have the right chunk in front of it. Since DOCX chunks are all labeled generically <code>"document"</code> (no page numbers, unlike PDFs), this is the DOCX-equivalent of a "right doc, wrong page" miss.</dd>
+        <dt>Not fixed</dt><dd>Same reasoning — a real, honest limitation of chunk-level retrieval granularity on long DOCX files, not tuned away after the fact.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <footer>
+    <span>DEMO AI File Searcher — proof of concept</span>
+    <span>100% local inference · zero external network calls</span>
+  </footer>
+
+</div>

@@ -1,0 +1,31 @@
+fastapi==0.115.0
+uvicorn==0.30.6
+requests>=2.32.3
+pypdf==4.3.1
+python-pptx==1.0.2
+python-docx==1.1.2
+pillow==10.4.0
+pytesseract==0.3.13
+pdf2image==1.17.0
+python-dotenv==1.0.1
+
+# Engine: LangChain (retrieval + generation). faiss-cpu is a transitive need of
+# langchain-community's FAISS vectorstore wrapper (and pulls in a compatible
+# numpy itself), not imported directly -- no separate numpy pin needed here.
+faiss-cpu>=1.9.0
+langchain==1.4.0
+langchain-core==1.6.3
+langchain-community==0.4.2
+langchain-ollama==1.1.0
+# EnsembleRetriever (weighted reciprocal rank fusion) lives here in LangChain
+# 1.x -- the main `langchain` package split legacy composability retrievers
+# out into this package.
+langchain-classic==1.0.8
+# BM25Retriever imports this lazily at runtime, not as a declared pip
+# dependency -- omitting it would install fine and then fail at query time.
+rank_bm25==0.2.2
+
+# Dev/demo-only: runs the notebooks/ walkthroughs. Not imported by ingest.py,
+# retrieval.py, or app.py -- the live app never depends on this.
+jupyter
+notebook
