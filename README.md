@@ -270,45 +270,6 @@ exposed — no automated drift detection when new documents dilute retrieval for
 questions — is unresolved and stays listed in Known Limitations below; for ongoing
 personal use, new documents will keep arriving and this exact scenario will recur.
 
-## Known Limitations
-
-This section stays honest and unsoftened on purpose — it's a more useful signal of
-where the system actually stands than a polished feature list would be.
-
-- **Citation visibility gap.** The LLM sees and may cite up to 5 excerpts (`CONTEXT_K`),
-  but only the top 3 (`CITATION_K`) are returned as citation cards. An answer can contain
-  an inline `[4]` or `[5]` reference with no corresponding card shown to the user.
-- **Duplicate filenames aren't disambiguated in citations.** The current index has two
-  different files both named `attention.pdf` — citations show `source_file` (basename)
-  only, so a user can't tell which one an answer actually came from without opening the
-  ingestion status view (which does track full paths internally).
-- **The "Strict grounding" toggle in the UI is decorative.** It's always shown on and
-  disabled — the guardrail behavior it describes is real and always active, but the
-  toggle itself doesn't control anything; there's no non-strict mode to switch to.
-- **Feedback buttons don't persist anything.** They're wired into the UI and disclose
-  this honestly on click, but there's no feedback endpoint or storage behind them yet.
-- **No deleted-file pruning.** If a file is removed from the scan folder, its chunks
-  stay in the index indefinitely — incremental ingestion only handles new and changed
-  files, not removed ones. Confirmed directly on 2026-09-17: removing 15 files required
-  a manual one-off pruning script rather than anything the running system did on its own.
-- **No automated drift detection.** A newly-ingested document can legitimately out-rank
-  an existing document for questions the eval set was calibrated against, silently
-  changing the measured accuracy with no alert — this is exactly what happened on
-  2026-09-17 (see the dated note under Measured Accuracy above). Nothing currently
-  watches for this between manual `eval.py` runs.
-- **The watcher scans its target folder recursively, including any subfolder you create
-  inside it.** A folder meant to "exclude" files from the index must live outside
-  `LOCAL_SCAN_DIR` entirely — a subfolder of it is still watched and will be re-ingested.
-- **Untested at scale.** The system has been verified against ~100 documents / ~1,750
-  chunks. Retrieval quality, FAISS index size, and re-embedding time at 10,000+ documents
-  are unknown.
-- **No automated regression suite.** `eval.py` checks retrieval/citation accuracy on
-  demand; there's no CI, no unit tests, and no automated run on every change — a
-  regression would only be caught by manually re-running the eval.
-- **Role-based access is a folder-naming convention**, not real permissions (see above)
-  — anyone with filesystem access to the scan folder controls what gets tagged
-  finance-only.
-
 ## Sharing a live link (demo only)
 
 For a pitch call where someone else needs to reach the running server:
