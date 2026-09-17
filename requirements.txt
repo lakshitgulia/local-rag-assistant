@@ -29,3 +29,7 @@ rank_bm25==0.2.2
 # retrieval.py, or app.py -- the live app never depends on this.
 jupyter
 notebook
+
+# Personal-use background watcher (watcher.py). Not imported by app.py --
+# the query-serving process stays independent of it.
+watchdog==6.0.0

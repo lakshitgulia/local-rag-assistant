@@ -28,6 +28,8 @@ INDEX_DIR = Path(__file__).parent / "index"
 INDEX_DIR.mkdir(exist_ok=True)
 FAISS_DIR = str(INDEX_DIR / "faiss_store")
 CHUNKS_PATH = INDEX_DIR / "chunks.json"
+MANIFEST_PATH = INDEX_DIR / "manifest.json"
+WATCHER_STATUS_PATH = INDEX_DIR / "watcher_status.json"
 
 ROLES = ["all", "finance"]
 
@@ -76,3 +78,37 @@ def load_chunks() -> List[Document]:
         return []
     with open(CHUNKS_PATH) as f:
         return [Document(page_content=d["page_content"], metadata=d["metadata"]) for d in json.load(f)]
+
+
+def _load_json(path: Path, default):
+    if not path.exists():
+        return default
+    with open(path) as f:
+        return json.load(f)
+
+
+def _save_json(path: Path, data) -> None:
+    with open(path, "w") as f:
+        json.dump(data, f)
+
+
+def save_manifest(manifest: dict) -> None:
+    """manifest: {absolute_file_path: {"hash": sha256_hex, "chunk_ids": [...]}}
+    -- lets ingest.py skip unchanged files and remove exactly the stale FAISS
+    entries for a changed file before re-adding it."""
+    _save_json(MANIFEST_PATH, manifest)
+
+
+def load_manifest() -> dict:
+    return _load_json(MANIFEST_PATH, {})
+
+
+def save_watcher_status(status: dict) -> None:
+    """status: {"last_run_at": ISO-8601 str, "last_file": filename} -- written
+    by watcher.py after each file it processes, so the ingestion status view
+    can show a real watcher-triggered timestamp instead of guessing at one."""
+    _save_json(WATCHER_STATUS_PATH, status)
+
+
+def load_watcher_status() -> dict:
+    return _load_json(WATCHER_STATUS_PATH, {})

@@ -2,148 +2,529 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>RAG Assistant Demo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAG Assistant</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap">
 <style>
-  :root {
-    --bg: #0f1115;
-    --panel: #171a21;
-    --border: #2a2e37;
-    --text: #e6e8eb;
-    --muted: #9aa1ac;
-    --accent: #5b8cff;
+  :root{
+    --sidebar-bg: #16302A;
+    --sidebar-bg-active: #2F6F5E;
+    --sidebar-text: #E7EFEA;
+    --sidebar-text-muted: #92AB9F;
+
+    --main-bg: #F2F3EF;
+    --surface: #FFFFFF;
+    --border: #E2E4DD;
+    --text: #1B1F1C;
+    --muted: #666E68;
+    --faint: #98A098;
+
+    --accent: #2F6F5E;
+    --accent-soft: #E1EEE8;
+    --warn: #A9711F;
+    --warn-soft: #F3EBDA;
+
+    --shadow: 0 1px 2px rgba(20,30,25,0.04), 0 4px 14px -6px rgba(20,30,25,0.10);
   }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    display: flex;
-    justify-content: center;
-    padding: 40px 16px;
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--main-bg); color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    display:flex; height:100vh; overflow:hidden;
   }
-  .app { width: 100%; max-width: 760px; }
-  h1 { font-size: 20px; margin-bottom: 4px; }
-  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
-  .row { display: flex; gap: 8px; margin-bottom: 8px; }
-  select, input[type=text] {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 10px 12px;
-    border-radius: 8px;
-    font-size: 14px;
+  h1,h2,h3,.brand,.navlabel,.stat-n{ font-family:'Manrope', -apple-system, sans-serif; }
+
+  /* ---------------- Sidebar ---------------- */
+  .sidebar{
+    width:224px; flex:0 0 auto; background:var(--sidebar-bg); color:var(--sidebar-text);
+    display:flex; flex-direction:column; padding:20px 14px;
   }
-  input[type=text] { flex: 1; }
-  select { flex-shrink: 0; }
-  button {
-    background: var(--accent);
-    color: white;
-    border: none;
-    padding: 10px 18px;
-    border-radius: 8px;
-    font-size: 14px;
-    cursor: pointer;
+  .brand{
+    font-weight:800; font-size:16px; letter-spacing:0.01em; color:#fff;
+    padding:6px 10px 22px;
   }
-  button:disabled { opacity: 0.5; cursor: default; }
-  .role-note { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
-  .panel {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 18px;
-    margin-top: 16px;
+  .brand span{ color:var(--sidebar-text-muted); font-weight:600; }
+  .nav{ display:flex; flex-direction:column; gap:4px; }
+  .navitem{
+    display:flex; align-items:center; gap:10px;
+    padding:10px 12px; border-radius:9px; cursor:pointer;
+    color:var(--sidebar-text-muted); font-size:13.5px; font-weight:600;
+    border:none; background:none; text-align:left; width:100%;
   }
-  .answer { white-space: pre-wrap; line-height: 1.5; font-size: 15px; }
-  .timing { color: var(--muted); font-size: 12px; margin-top: 10px; }
-  .source {
-    border-top: 1px solid var(--border);
-    padding-top: 10px;
-    margin-top: 10px;
-    font-size: 13px;
+  .navitem svg{ width:18px; height:18px; flex:0 0 auto; opacity:0.85; }
+  .navitem:hover{ background:rgba(255,255,255,0.06); color:var(--sidebar-text); }
+  .navitem.active{ background:var(--sidebar-bg-active); color:#fff; }
+  .navitem.active svg{ opacity:1; }
+  .sidebar-foot{
+    margin-top:auto; padding:10px 12px; font-size:11px; line-height:1.5;
+    color:var(--sidebar-text-muted);
   }
-  .source-head { color: var(--accent); font-weight: 600; margin-bottom: 4px; }
-  .source-snippet { color: var(--muted); }
-  .hidden { display: none; }
-  .loading { color: var(--muted); font-size: 14px; }
+
+  /* ---------------- Main shell ---------------- */
+  .main{ flex:1; display:flex; flex-direction:column; min-width:0; }
+  .view{ flex:1; overflow-y:auto; padding:26px 34px 40px; }
+  [hidden]{ display:none !important; }
+
+  .topbar{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:22px; flex-wrap:wrap; }
+  .topbar h1{ font-size:19px; font-weight:800; margin:0; }
+  .stat-pill{
+    display:flex; align-items:center; gap:8px;
+    background:var(--surface); border:1px solid var(--border); border-radius:999px;
+    padding:7px 14px; font-size:12.5px; color:var(--muted); box-shadow:var(--shadow);
+  }
+  .stat-pill b{ color:var(--text); font-variant-numeric:tabular-nums; }
+  .stat-pill .dot{ width:6px; height:6px; border-radius:50%; background:var(--accent); }
+
+  /* ---------------- Chat view ---------------- */
+  .controls-row{ display:flex; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+  .role-select{
+    display:flex; align-items:center; gap:8px;
+    background:var(--surface); border:1px solid var(--border); border-radius:9px;
+    padding:7px 12px; font-size:13px; box-shadow:var(--shadow);
+  }
+  .role-select label{ color:var(--muted); font-size:12px; }
+  .role-select select{
+    border:none; background:none; font-size:13px; font-weight:600; color:var(--text);
+    cursor:pointer;
+  }
+  .role-note{ font-size:11.5px; color:var(--faint); }
+
+  .messages{ display:flex; flex-direction:column; gap:18px; margin-bottom:20px; }
+  .empty-state{
+    text-align:center; color:var(--faint); font-size:13.5px; padding:60px 20px;
+    border:1px dashed var(--border); border-radius:12px; background:var(--surface);
+  }
+
+  .msg-row{ display:flex; }
+  .msg-row.user{ justify-content:flex-end; }
+  .bubble-user{
+    background:var(--accent); color:#fff; padding:11px 16px; border-radius:14px 14px 3px 14px;
+    max-width:70%; font-size:14px; line-height:1.5;
+  }
+  .assistant-block{ max-width:80%; }
+  .answer-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px 14px 14px 3px;
+    padding:16px 18px; box-shadow:var(--shadow);
+  }
+  .answer-text{ font-size:14.5px; line-height:1.6; white-space:pre-wrap; margin:0 0 12px; }
+
+  .ground-pill{
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:999px;
+    margin-bottom:12px;
+  }
+  .ground-pill.yes{ background:var(--accent-soft); color:var(--accent); }
+  .ground-pill.no{ background:var(--warn-soft); color:var(--warn); }
+  .ground-pill svg{ width:12px; height:12px; }
+
+  .citations{ display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+  .citation-card{
+    display:flex; gap:10px; padding:10px 12px; border:1px solid var(--border);
+    border-radius:10px; background:var(--main-bg);
+  }
+  .citation-badge{
+    flex:0 0 auto; width:20px; height:20px; border-radius:50%;
+    background:var(--accent); color:#fff; font-size:10.5px; font-weight:800;
+    display:flex; align-items:center; justify-content:center; margin-top:1px;
+  }
+  .citation-body{ min-width:0; flex:1; }
+  .citation-head{ display:flex; align-items:center; gap:7px; margin-bottom:3px; flex-wrap:wrap; }
+  .filetype-icon{
+    flex:0 0 auto; width:24px; height:18px; border-radius:4px; font-size:8.5px; font-weight:800;
+    display:flex; align-items:center; justify-content:center; color:#fff; letter-spacing:0.02em;
+  }
+  .filetype-icon.pdf{ background:#B3412E; }
+  .filetype-icon.docx{ background:#2A5DA8; }
+  .filetype-icon.pptx{ background:#C0631E; }
+  .filetype-icon.other{ background:#767D77; }
+  .citation-file{ font-size:12.5px; font-weight:700; color:var(--text); }
+  .citation-loc{ font-size:11.5px; color:var(--muted); }
+  .citation-snippet{ font-size:12px; color:var(--muted); line-height:1.5; }
+
+  .answer-foot{ display:flex; align-items:center; justify-content:space-between; padding-top:10px; border-top:1px solid var(--border); }
+  .timing{ font-size:11.5px; color:var(--faint); font-variant-numeric:tabular-nums; }
+  .feedback{ display:flex; align-items:center; gap:4px; }
+  .fb-btn{
+    background:none; border:1px solid var(--border); border-radius:7px; width:28px; height:28px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--muted);
+  }
+  .fb-btn:hover{ background:var(--main-bg); }
+  .fb-btn svg{ width:14px; height:14px; }
+  .fb-note{ font-size:10.5px; color:var(--faint); margin-left:4px; }
+
+  .composer{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:12px 14px; box-shadow:var(--shadow);
+  }
+  .composer-row{ display:flex; gap:10px; align-items:flex-end; }
+  .composer textarea{
+    flex:1; border:none; resize:none; font-size:14px; font-family:inherit;
+    outline:none; line-height:1.5; max-height:120px; min-height:22px; background:transparent; color:var(--text);
+  }
+  .send-btn{
+    flex:0 0 auto; background:var(--accent); color:#fff; border:none; border-radius:9px;
+    padding:9px 18px; font-size:13.5px; font-weight:700; cursor:pointer;
+  }
+  .send-btn:disabled{ opacity:0.5; cursor:default; }
+  .composer-foot{ display:flex; align-items:center; justify-content:space-between; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+  .grounding-toggle{ display:flex; align-items:center; gap:8px; }
+  .switch{ position:relative; width:34px; height:19px; flex:0 0 auto; }
+  .switch input{ display:none; }
+  .switch .track{
+    position:absolute; inset:0; background:var(--accent); border-radius:999px; opacity:0.9;
+  }
+  .switch .knob{
+    position:absolute; top:2px; left:17px; width:15px; height:15px; border-radius:50%; background:#fff;
+    box-shadow:0 1px 2px rgba(0,0,0,0.25);
+  }
+  .grounding-label{ font-size:12px; color:var(--muted); }
+  .grounding-label b{ color:var(--text); }
+  .grounding-caption{ font-size:10.5px; color:var(--faint); }
+
+  /* ---------------- Ingestion view ---------------- */
+  .stat-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
+  .stat-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:16px 18px; box-shadow:var(--shadow);
+  }
+  .stat-card .stat-n{ font-size:26px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .stat-card .stat-l{ font-size:12px; color:var(--muted); margin-top:2px; }
+  .stat-card .stat-sub{ font-size:11px; color:var(--faint); margin-top:6px; line-height:1.5; }
+
+  .section-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:18px 20px; margin-bottom:16px; box-shadow:var(--shadow);
+  }
+  .section-card h3{ font-size:13px; margin:0 0 12px; color:var(--text); }
+  .type-row{ display:flex; align-items:center; gap:10px; margin-bottom:8px; font-size:13px; }
+  .type-row:last-child{ margin-bottom:0; }
+  .type-bar-track{ flex:1; height:8px; background:var(--main-bg); border-radius:99px; overflow:hidden; }
+  .type-bar-fill{ height:100%; background:var(--accent); border-radius:99px; }
+  .type-count{ width:34px; text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); }
+
+  .refresh-btn{
+    background:var(--surface); border:1px solid var(--border); border-radius:8px;
+    padding:6px 12px; font-size:12px; font-weight:600; color:var(--text); cursor:pointer;
+  }
+  .refresh-btn:hover{ background:var(--main-bg); }
+  .ingest-note{ font-size:12px; color:var(--muted); line-height:1.6; }
+  .unavailable{ color:var(--faint); font-style:italic; }
 </style>
 </head>
 <body>
-<div class="app">
-  <h1>RAG Assistant &mdash; Proof of Concept</h1>
-  <div class="subtitle">Answers are constrained to your indexed documents. 100% local inference via Ollama.</div>
 
-  <div class="row">
-    <input type="text" id="question" placeholder="Ask a question about your indexed documents..." />
-    <select id="role">
-      <option value="all">All Staff</option>
-      <option value="finance">Finance</option>
-    </select>
-    <button id="ask">Ask</button>
+<div class="sidebar">
+  <div class="brand">RAG<span> Assistant</span></div>
+  <div class="nav">
+    <button class="navitem active" id="nav-chat" data-view="chat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      <span class="navlabel">Chat</span>
+    </button>
+    <button class="navitem" id="nav-ingest" data-view="ingest">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+      <span class="navlabel">Document Ingestion</span>
+    </button>
   </div>
-  <div class="role-note">Role is a demo stand-in for access control, not real RBAC &mdash; it filters which documents' citations can be returned.</div>
+  <div class="sidebar-foot">100% local via Ollama.<br/>No external network calls.</div>
+</div>
 
-  <div id="loading" class="loading hidden">Thinking...</div>
+<div class="main">
 
-  <div id="result" class="panel hidden">
-    <div id="answer" class="answer"></div>
-    <div id="timing" class="timing"></div>
-    <div id="sources"></div>
+  <!-- ============ CHAT VIEW ============ -->
+  <div class="view" id="view-chat">
+    <div class="topbar">
+      <h1>Chat</h1>
+      <div class="stat-pill" id="chat-stat-pill"><span class="dot"></span><span>Loading index&hellip;</span></div>
+    </div>
+
+    <div class="controls-row">
+      <div class="role-select">
+        <label for="role">Access scope</label>
+        <select id="role"></select>
+      </div>
+      <div class="role-note">Demo stand-in for access control &mdash; filters which documents' citations can be returned. Not real RBAC.</div>
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="empty-state" id="empty-state">Ask a question about your indexed documents to get started.</div>
+    </div>
+
+    <div class="composer">
+      <div class="composer-row">
+        <textarea id="question" rows="1" placeholder="Ask a question about your indexed documents..."></textarea>
+        <button class="send-btn" id="ask">Ask</button>
+      </div>
+      <div class="composer-foot">
+        <div class="grounding-toggle">
+          <span class="switch"><input type="checkbox" id="grounding" checked disabled><span class="track"></span><span class="knob"></span></span>
+          <div>
+            <div class="grounding-label"><b>Strict grounding</b></div>
+            <div class="grounding-caption">Always enforced in this build &mdash; the backend declines rather than guesses when nothing relevant is retrieved. This toggle is informational; there's no relaxed mode wired up yet.</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
+
+  <!-- ============ DOCUMENT INGESTION VIEW ============ -->
+  <div class="view" id="view-ingest" hidden>
+    <div class="topbar">
+      <h1>Document Ingestion</h1>
+      <button class="refresh-btn" id="refresh-ingest">Refresh</button>
+    </div>
+
+    <div class="stat-grid" id="ingest-stat-grid">
+      <div class="stat-card"><div class="stat-n">&mdash;</div><div class="stat-l">Documents indexed</div></div>
+      <div class="stat-card"><div class="stat-n">&mdash;</div><div class="stat-l">Chunks indexed</div></div>
+      <div class="stat-card"><div class="stat-n">&mdash;</div><div class="stat-l">Index last updated</div></div>
+      <div class="stat-card"><div class="stat-n">&mdash;</div><div class="stat-l">Last watcher update</div></div>
+    </div>
+
+    <div class="section-card">
+      <h3>Documents by type</h3>
+      <div id="type-breakdown"></div>
+    </div>
+
+    <div class="section-card">
+      <h3>About this view</h3>
+      <div class="ingest-note">These numbers are read live from the incremental-ingestion index (<code>index/manifest.json</code>, <code>index/chunks.json</code>) and the background watcher's own status file &mdash; not a fixed snapshot. "Last watcher update" only appears once the watcher has actually processed a file since it last started; it's left unavailable, not guessed, until then.</div>
+    </div>
+  </div>
+
 </div>
 
 <script>
-const questionInput = document.getElementById('question');
+const API = {
+  roles: '/api/roles',
+  stats: '/api/stats',
+  query: '/api/query',
+  ingestStatus: '/api/ingest/status',
+};
+
+// ---------- Sidebar nav ----------
+const navButtons = document.querySelectorAll('.navitem');
+const views = { chat: document.getElementById('view-chat'), ingest: document.getElementById('view-ingest') };
+navButtons.forEach(btn => btn.addEventListener('click', () => {
+  navButtons.forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  Object.entries(views).forEach(([key, el]) => { el.hidden = (key !== btn.dataset.view); });
+  if (btn.dataset.view === 'ingest') loadIngestStatus();
+}));
+
+// ---------- Chat view ----------
 const roleSelect = document.getElementById('role');
+const questionInput = document.getElementById('question');
 const askButton = document.getElementById('ask');
-const loading = document.getElementById('loading');
-const result = document.getElementById('result');
-const answerEl = document.getElementById('answer');
-const timingEl = document.getElementById('timing');
-const sourcesEl = document.getElementById('sources');
+const messagesEl = document.getElementById('messages');
+const emptyState = document.getElementById('empty-state');
+const chatStatPill = document.getElementById('chat-stat-pill');
+
+const ROLE_LABELS = { all: 'All Staff', finance: 'Finance' };
+
+async function loadRoles() {
+  const resp = await fetch(API.roles);
+  const data = await resp.json();
+  roleSelect.innerHTML = data.roles.map(r => `<option value="${r}">${ROLE_LABELS[r] || r}</option>`).join('');
+}
+
+async function loadChatStats() {
+  try {
+    const resp = await fetch(API.stats);
+    const data = await resp.json();
+    chatStatPill.innerHTML = `<span class="dot"></span><span><b>${data.total_documents}</b> documents &middot; <b>${data.total_chunks}</b> chunks indexed</span>`;
+  } catch (e) {
+    chatStatPill.innerHTML = `<span class="dot"></span><span class="unavailable">Index stats unavailable</span>`;
+  }
+}
+
+function fileExt(filename) {
+  const parts = filename.split('.');
+  return parts.length > 1 ? parts.pop().toLowerCase() : '';
+}
+
+function fileTypeBadge(filename) {
+  const ext = fileExt(filename);
+  const map = { pdf: ['PDF', 'pdf'], docx: ['DOC', 'docx'], doc: ['DOC', 'docx'], pptx: ['PPT', 'pptx'], ppt: ['PPT', 'pptx'] };
+  const [label, cls] = map[ext] || [ext.slice(0, 3).toUpperCase() || '?', 'other'];
+  return `<span class="filetype-icon ${cls}">${label}</span>`;
+}
+
+function renderCitation(s) {
+  return `
+    <div class="citation-card">
+      <div class="citation-badge">${s.rank}</div>
+      <div class="citation-body">
+        <div class="citation-head">
+          ${fileTypeBadge(s.file)}
+          <span class="citation-file">${escapeHtml(s.file)}</span>
+          <span class="citation-loc">&mdash; ${escapeHtml(s.location)}</span>
+        </div>
+        <div class="citation-snippet">${escapeHtml(s.snippet)}</div>
+      </div>
+    </div>`;
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function renderAssistantMessage(data) {
+  const grounded = data.grounded && data.sources.length > 0;
+  const ms = Math.round(data.response_time_seconds * 1000);
+
+  const groundPill = grounded
+    ? `<div class="ground-pill yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>Grounded in ${data.sources.length} source${data.sources.length === 1 ? '' : 's'}</div>`
+    : `<div class="ground-pill no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>No relevant source found</div>`;
+
+  const citations = grounded ? `<div class="citations">${data.sources.map(renderCitation).join('')}</div>` : '';
+
+  const row = document.createElement('div');
+  row.className = 'msg-row';
+  row.innerHTML = `
+    <div class="assistant-block">
+      <div class="answer-card">
+        ${groundPill}
+        <p class="answer-text">${escapeHtml(data.answer)}</p>
+        ${citations}
+        <div class="answer-foot">
+          <span class="timing">${ms} ms</span>
+          <div class="feedback">
+            <button class="fb-btn" data-fb="up" title="Not connected to feedback storage yet">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 10v12M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+            </button>
+            <button class="fb-btn" data-fb="down" title="Not connected to feedback storage yet">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 14V2M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg>
+            </button>
+            <span class="fb-note" id="fb-note-${Date.now()}"></span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  row.querySelectorAll('.fb-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const note = btn.parentElement.querySelector('.fb-note');
+      note.textContent = 'Thanks — not saved anywhere yet, no feedback endpoint exists in this build.';
+      setTimeout(() => { note.textContent = ''; }, 4000);
+    });
+  });
+
+  return row;
+}
 
 async function ask() {
   const question = questionInput.value.trim();
   if (!question) return;
 
+  emptyState.hidden = true;
   askButton.disabled = true;
-  loading.classList.remove('hidden');
-  result.classList.add('hidden');
-  sourcesEl.innerHTML = '';
+
+  const userRow = document.createElement('div');
+  userRow.className = 'msg-row user';
+  userRow.innerHTML = `<div class="bubble-user">${escapeHtml(question)}</div>`;
+  messagesEl.appendChild(userRow);
+  questionInput.value = '';
+
+  const thinkingRow = document.createElement('div');
+  thinkingRow.className = 'msg-row';
+  thinkingRow.innerHTML = `<div class="assistant-block"><div class="answer-card"><span class="timing">Thinking&hellip;</span></div></div>`;
+  messagesEl.appendChild(thinkingRow);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
 
   try {
-    const resp = await fetch('/api/query', {
+    const resp = await fetch(API.query, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, role: roleSelect.value })
+      body: JSON.stringify({ question, role: roleSelect.value }),
     });
+    thinkingRow.remove();
     if (!resp.ok) {
       const err = await resp.json();
-      answerEl.textContent = 'Error: ' + (err.detail || resp.statusText);
-      timingEl.textContent = '';
+      const errRow = document.createElement('div');
+      errRow.className = 'msg-row';
+      errRow.innerHTML = `<div class="assistant-block"><div class="answer-card"><p class="answer-text">Error: ${escapeHtml(err.detail || resp.statusText)}</p></div></div>`;
+      messagesEl.appendChild(errRow);
     } else {
       const data = await resp.json();
-      answerEl.textContent = data.answer;
-      timingEl.textContent = `Response time: ${data.response_time_seconds}s`;
-      data.sources.forEach(s => {
-        const div = document.createElement('div');
-        div.className = 'source';
-        div.innerHTML = `<div class="source-head">[${s.rank}] ${s.file} &mdash; ${s.location}</div><div class="source-snippet">${s.snippet}</div>`;
-        sourcesEl.appendChild(div);
-      });
+      messagesEl.appendChild(renderAssistantMessage(data));
     }
-    result.classList.remove('hidden');
   } catch (e) {
-    answerEl.textContent = 'Request failed: ' + e.message;
-    result.classList.remove('hidden');
+    thinkingRow.remove();
+    const errRow = document.createElement('div');
+    errRow.className = 'msg-row';
+    errRow.innerHTML = `<div class="assistant-block"><div class="answer-card"><p class="answer-text">Request failed: ${escapeHtml(e.message)}</p></div></div>`;
+    messagesEl.appendChild(errRow);
   } finally {
-    loading.classList.add('hidden');
     askButton.disabled = false;
+    messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 }
 
 askButton.addEventListener('click', ask);
-questionInput.addEventListener('keydown', e => { if (e.key === 'Enter') ask(); });
+questionInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); }
+});
+questionInput.addEventListener('input', () => {
+  questionInput.style.height = 'auto';
+  questionInput.style.height = Math.min(questionInput.scrollHeight, 120) + 'px';
+});
+
+// ---------- Document Ingestion view ----------
+function formatTimestamp(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+async function loadIngestStatus() {
+  const grid = document.getElementById('ingest-stat-grid');
+  const typeBreakdown = document.getElementById('type-breakdown');
+  try {
+    const resp = await fetch(API.ingestStatus);
+    const data = await resp.json();
+
+    const lastUpdated = formatTimestamp(data.index_last_updated);
+    const watcher = data.last_watcher_update;
+
+    grid.innerHTML = `
+      <div class="stat-card"><div class="stat-n">${data.total_documents}</div><div class="stat-l">Documents indexed</div></div>
+      <div class="stat-card"><div class="stat-n">${data.total_chunks}</div><div class="stat-l">Chunks indexed</div></div>
+      <div class="stat-card">
+        <div class="stat-n" style="font-size:16px;">${lastUpdated || '<span class="unavailable">Unavailable</span>'}</div>
+        <div class="stat-l">Index last updated</div>
+      </div>
+      <div class="stat-card">
+        ${watcher
+          ? `<div class="stat-n" style="font-size:16px;">${formatTimestamp(watcher.last_run_at)}</div><div class="stat-l">Last watcher update</div><div class="stat-sub">Triggered by: ${escapeHtml(watcher.last_file)}</div>`
+          : `<div class="stat-n" style="font-size:16px;" class="unavailable">Not yet run</div><div class="stat-l">Last watcher update</div><div class="stat-sub">The watcher hasn't processed a new file since it last started.</div>`}
+      </div>`;
+
+    const types = data.files_by_type || {};
+    const max = Math.max(1, ...Object.values(types));
+    const typeLabels = { pdf: 'PDF', docx: 'DOCX', pptx: 'PPTX', eml: 'EML', mbox: 'MBOX' };
+    const rows = Object.entries(types).sort((a, b) => b[1] - a[1]);
+    typeBreakdown.innerHTML = rows.length
+      ? rows.map(([ext, count]) => `
+          <div class="type-row">
+            ${fileTypeBadge('x.' + ext)}
+            <span style="width:52px;">${typeLabels[ext] || ext.toUpperCase()}</span>
+            <div class="type-bar-track"><div class="type-bar-fill" style="width:${(count / max * 100).toFixed(0)}%"></div></div>
+            <span class="type-count">${count}</span>
+          </div>`).join('')
+      : '<div class="unavailable">No documents indexed yet.</div>';
+  } catch (e) {
+    grid.innerHTML = `<div class="stat-card"><div class="unavailable">Ingestion status unavailable: ${escapeHtml(e.message)}</div></div>`;
+    typeBreakdown.innerHTML = '';
+  }
+}
+
+document.getElementById('refresh-ingest').addEventListener('click', loadIngestStatus);
+
+// ---------- Init ----------
+loadRoles();
+loadChatStats();
 </script>
 </body>
 </html>

@@ -1,18 +1,26 @@
 """
-One-time batch ingestion: scan a local folder, parse PDF/PPTX/DOCX/EML/MBOX/
+Incremental ingestion: scan a local folder, parse PDF/PPTX/DOCX/EML/MBOX/
 scanned-image files, chunk the text, embed it via Ollama, and persist a FAISS
 index + chunk metadata under ./index/. (No separate BM25 index file:
 retrieval.py rebuilds BM25Retriever fresh from chunks.json at app startup --
 that's pure CPU, no network call, and cheap enough not to need its own
 persistence format.)
 
+A content-hash manifest (index/manifest.json) means unchanged files are
+skipped on every run -- only new or changed files are parsed/chunked/embedded.
+A changed file has its old chunks removed from the FAISS index before the new
+ones are added, so re-ingesting never leaves stale entries behind. This is
+what makes watcher.py's per-file, run-on-every-fs-event calls cheap.
+
 Run on demand:
     python ingest.py                      # scans LOCAL_SCAN_DIR from .env
     python ingest.py --scan-dir ~/Desktop/demo-docs
 """
 import argparse
+import hashlib
 import mailbox
 import os
+import uuid
 from email import message_from_bytes
 from pathlib import Path
 from typing import List, Tuple
@@ -27,7 +35,7 @@ from pptx import Presentation
 from pypdf import PdfReader
 from docx import Document as DocxDocument
 
-from core import FAISS_DIR, assign_role, get_embeddings, save_chunks
+from core import FAISS_DIR, assign_role, get_embeddings, load_chunks, load_manifest, save_chunks, save_manifest
 
 load_dotenv()
 
@@ -153,6 +161,15 @@ def collect_files(scan_dir: Path) -> List[Path]:
     return [p for p in scan_dir.rglob("*") if p.is_file() and p.suffix.lower() in exts]
 
 
+def file_hash(path: Path) -> str:
+    """SHA-256 of file content -- the manifest key for skip-if-unchanged."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(65536), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
 def build_chunks(files: List[Path]) -> List[Document]:
     all_chunks = []
     for path in files:
@@ -171,7 +188,11 @@ def build_chunks(files: List[Path]) -> List[Document]:
             for piece in chunk_text(text):
                 all_chunks.append(Document(
                     page_content=piece,
-                    metadata={"source_file": path.name, "location": location, "role": role},
+                    # source_path (full path) identifies exactly which file a
+                    # chunk came from for incremental re-indexing; source_file
+                    # (basename) is what citations show -- two different
+                    # files can share a basename, so these must stay distinct.
+                    metadata={"source_file": path.name, "source_path": str(path), "location": location, "role": role},
                 ))
         print(f"[ingest] parsed {path.name} ({len(sections)} section(s))")
     return all_chunks
@@ -184,26 +205,50 @@ EMBED_BATCH_SIZE = 64  # LangChain's embed_documents() sends the whole list in
 
 
 def run_ingestion(files: List[Path]):
-    chunks = build_chunks(files)
-    print(f"[ingest] built {len(chunks)} chunk(s) from {len(files)} file(s)")
-    if not chunks:
-        print("[ingest] no text extracted -- nothing to index.")
+    manifest = load_manifest()
+    chunks = load_chunks()
+    vectorstore = None
+    if os.path.exists(FAISS_DIR):
+        vectorstore = FAISS.load_local(FAISS_DIR, get_embeddings(), allow_dangerous_deserialization=True)
+
+    to_process = [(p, file_hash(p)) for p in files]
+    to_process = [(p, h) for p, h in to_process if manifest.get(str(p), {}).get("hash") != h]
+
+    print(f"[ingest] {len(files)} file(s) scanned, {len(to_process)} new/changed")
+    if not to_process:
+        print("[ingest] nothing to do -- index already up to date.")
         return
 
-    print("[ingest] embedding chunks via Ollama (nomic-embed-text)...")
     embeddings = get_embeddings()
-    vectorstore = None
-    for i in range(0, len(chunks), EMBED_BATCH_SIZE):
-        batch = chunks[i:i + EMBED_BATCH_SIZE]
-        if vectorstore is None:
-            vectorstore = FAISS.from_documents(batch, embeddings)
-        else:
-            vectorstore.add_documents(batch)
-        print(f"[ingest] embedded {min(i + EMBED_BATCH_SIZE, len(chunks))}/{len(chunks)} chunks")
-    vectorstore.save_local(FAISS_DIR)
+    for path, h in to_process:
+        path_str = str(path)
+        old_entry = manifest.get(path_str)
+        if old_entry:
+            if vectorstore is not None and old_entry["chunk_ids"]:
+                vectorstore.delete(ids=old_entry["chunk_ids"])
+            chunks = [c for c in chunks if c.metadata.get("source_path") != path_str]
+            print(f"[ingest] removed {len(old_entry['chunk_ids'])} stale chunk(s) for changed file: {path.name}")
 
+        file_chunks = build_chunks([path])
+        chunk_ids = [str(uuid.uuid4()) for _ in file_chunks]
+
+        for i in range(0, len(file_chunks), EMBED_BATCH_SIZE):
+            batch = file_chunks[i:i + EMBED_BATCH_SIZE]
+            batch_ids = chunk_ids[i:i + EMBED_BATCH_SIZE]
+            if vectorstore is None:
+                vectorstore = FAISS.from_documents(batch, embeddings, ids=batch_ids)
+            else:
+                vectorstore.add_documents(batch, ids=batch_ids)
+
+        chunks.extend(file_chunks)
+        manifest[path_str] = {"hash": h, "chunk_ids": chunk_ids}
+        print(f"[ingest] embedded {len(file_chunks)} chunk(s) from {path.name}")
+
+    if vectorstore is not None:
+        vectorstore.save_local(FAISS_DIR)
     save_chunks(chunks)
-    print(f"[ingest] done. Indexed {len(chunks)} chunks into ./index/")
+    save_manifest(manifest)
+    print(f"[ingest] done. {len(chunks)} total chunk(s) indexed, {len(to_process)} file(s) updated this run.")
 
 
 if __name__ == "__main__":
