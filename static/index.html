@@ -209,6 +209,27 @@
   .refresh-btn:hover{ background:var(--main-bg); }
   .ingest-note{ font-size:12px; color:var(--muted); line-height:1.6; }
   .unavailable{ color:var(--faint); font-style:italic; }
+
+  /* ---------------- Mobile layout (phone width, <=640px) ---------------- */
+  /* Additive only -- every rule above is untouched, so anything wider than
+     640px renders exactly as before. Below the breakpoint, the sidebar
+     switches from a full-height column beside .main to a compact row above
+     it, and the 4-column ingestion stat grid drops to 2 columns so each
+     stat number has room instead of being squeezed into an unreadable box. */
+  @media (max-width: 640px){
+    body{ flex-direction:column; height:auto; min-height:100vh; overflow-y:auto; overflow-x:hidden; }
+    .sidebar{
+      width:100%; flex:0 0 auto; flex-direction:row; align-items:center;
+      padding:10px 14px; gap:12px;
+    }
+    .brand{ padding:0; flex:0 0 auto; }
+    .nav{ flex-direction:row; gap:6px; overflow-x:auto; flex:1; }
+    .navitem{ flex:0 0 auto; padding:8px 10px; white-space:nowrap; }
+    .sidebar-foot{ display:none; }
+    .main{ min-height:0; }
+    .view{ padding:16px 16px 28px; }
+    .stat-grid{ grid-template-columns:repeat(2,1fr); }
+  }
 </style>
 </head>
 <body>
